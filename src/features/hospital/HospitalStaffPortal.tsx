@@ -18,7 +18,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ErrorMessage } from '../../components/common/StateViews';
 import { useAuth } from '../../context/AuthContext';
-import { VETTED_VOLUNTEERS } from '../../lib/mockData';
+import { VERIFIED_HOSPITALS, VETTED_VOLUNTEERS } from '../../lib/mockData';
 import {
   getStoredIntakes,
   getStoredRequests,
@@ -26,7 +26,8 @@ import {
   saveStoredIntakes,
   saveStoredRequests
 } from '../../lib/store';
-import { AssistanceRequest, HospitalIntakeRecord, OrganType } from '../../types';
+import { AssistanceRequest, HospitalIntakeRecord, OrganType, VerifiedHospital } from '../../types';
+import { HospitalCoordinationDesk } from './HospitalCoordinationDesk';
 
 // Zod validation schemas
 const intakeSchema = z.object({
@@ -58,9 +59,15 @@ function createSyntheticCode(organ: string): string {
   return `SYN-PAT-2026-${organPrefix}-${counter}`;
 }
 
-export const HospitalStaffPortal: React.FC = () => {
+interface HospitalStaffPortalProps {
+  initialTab?: 'assistance_coordination' | 'volunteer_assignment' | 'compliance';
+}
+
+export const HospitalStaffPortal: React.FC<HospitalStaffPortalProps> = ({
+  initialTab = 'compliance'
+}) => {
   const { currentUser, isHospitalStaff, isAdmin, switchRole } = useAuth();
-  const [activeTab, setActiveTab] = useState<'compliance' | 'volunteer_assignment'>('compliance');
+  const [activeTab, setActiveTab] = useState<'assistance_coordination' | 'volunteer_assignment' | 'compliance'>(initialTab);
   const [intakes, setIntakes] = useState<HospitalIntakeRecord[]>(() => getStoredIntakes());
   const [requests, setRequests] = useState<AssistanceRequest[]>(() => getStoredRequests());
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
@@ -146,6 +153,54 @@ export const HospitalStaffPortal: React.FC = () => {
       </div>
     );
   }
+
+  // Institutional Verification Guard
+  if (currentUser?.role === 'hospital_staff' && currentUser?.hospitalVerificationStatus === 'pending') {
+    return (
+      <div className="space-y-6 text-left max-w-4xl mx-auto py-6">
+        <div>
+          <h2 className="text-3xl font-bold text-[#0F172A] font-heading">
+            Hospital Transplant Nodal Desk
+          </h2>
+          <p className="text-sm text-[#64748B] mt-1">
+            Institutional verification is required before hospital coordination privileges are activated.
+          </p>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-white border border-amber-300 shadow-xs space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-[#0F172A]">
+              Institutional Verification Under Review
+            </h3>
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              Your registration application for <strong>"{currentUser.organization || 'Healthcare Facility'}"</strong> is currently pending statutory review under THOTA 1994. Selecting "Hospital" during registration does not automatically grant hospital staff privileges.
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-xs text-amber-900 leading-relaxed space-y-1">
+            <strong>Statutory Rule (Section 14, THOTA 1994):</strong>
+            <p>
+              Platform administrators must verify official registration certificates, gazette notifications, and nodal appointment credentials before institutional staff may view private patient assistance requests.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Resolve coordinator's institution
+  const userHospital: VerifiedHospital =
+    VERIFIED_HOSPITALS.find(
+      (h) =>
+        (currentUser?.hospitalRegistrationNumber &&
+          h.registrationNumber === currentUser.hospitalRegistrationNumber) ||
+        (currentUser?.organization &&
+          (h.name.toLowerCase().includes(currentUser.organization.toLowerCase().substring(0, 15)) ||
+            currentUser.organization.toLowerCase().includes(h.name.toLowerCase().substring(0, 15))))
+    ) || VERIFIED_HOSPITALS[0];
 
   // Submit synthetic case
   const onIntakeSubmit = (data: IntakeFormData) => {
@@ -306,11 +361,24 @@ export const HospitalStaffPortal: React.FC = () => {
       </div>
 
       {/* Portal Tab Switcher */}
-      <div className="flex border-b border-[#E2E8F0] gap-4">
+      <div className="flex border-b border-[#E2E8F0] gap-4 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => setActiveTab('assistance_coordination')}
+          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
+            activeTab === 'assistance_coordination'
+              ? 'border-[#2563EB] text-[#2563EB]'
+              : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+          }`}
+        >
+          <Hospital className="w-4 h-4" />
+          Transplant Assistance Requests
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab('volunteer_assignment')}
-          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${
+          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
             activeTab === 'volunteer_assignment'
               ? 'border-[#2563EB] text-[#2563EB]'
               : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
@@ -323,7 +391,7 @@ export const HospitalStaffPortal: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('compliance')}
-          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${
+          className={`pb-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
             activeTab === 'compliance'
               ? 'border-[#2563EB] text-[#2563EB]'
               : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
@@ -333,6 +401,11 @@ export const HospitalStaffPortal: React.FC = () => {
           Clinical Compliance & THOTA Cases ({intakes.length})
         </button>
       </div>
+
+      {/* TAB 1: TRANSPLANT ASSISTANCE REQUESTS */}
+      {activeTab === 'assistance_coordination' && (
+        <HospitalCoordinationDesk hospital={userHospital} />
+      )}
 
       {/* TAB 1: VOLUNTEER ASSIGNMENT */}
       {activeTab === 'volunteer_assignment' && (

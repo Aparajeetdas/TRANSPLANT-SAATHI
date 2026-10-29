@@ -1,8 +1,13 @@
 import {
   ArrowLeft,
+  Building,
+  CheckCircle2,
   ExternalLink,
+  FileText,
+  Globe,
   HeartHandshake,
   Hospital,
+  Mail,
   MapPin,
   Phone,
   ShieldCheck,
@@ -14,13 +19,19 @@ import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { HospitalAssistanceRequestModal } from '../../features/hospital/HospitalAssistanceRequestModal';
+import { OfficialRegistrationGuidanceModal } from '../../features/hospital/OfficialRegistrationGuidanceModal';
 import { RequestSupportModal } from '../../features/support/RequestSupportModal';
 import { useHospital } from '../../hooks/useHospitals';
+import { OrganType } from '../../types';
 
 export const HospitalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: hospital, isLoading } = useHospital(id);
+  const [isAssistanceModalOpen, setIsAssistanceModalOpen] = useState(false);
+  const [isGuidanceModalOpen, setIsGuidanceModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [selectedOrganForRequest, setSelectedOrganForRequest] = useState<OrganType | undefined>(undefined);
 
   if (isLoading) {
     return (
@@ -89,15 +100,28 @@ export const HospitalDetailPage: React.FC = () => {
             </p>
           </div>
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setIsSupportModalOpen(true)}
-            leftIcon={<HeartHandshake className="w-4 h-4" />}
-            className="shrink-0"
-          >
-            Request Saathi for this Center
-          </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setSelectedOrganForRequest(undefined);
+                setIsAssistanceModalOpen(true);
+              }}
+              leftIcon={<Building className="w-4 h-4" />}
+              className="shrink-0 font-semibold"
+            >
+              Request Transplant Assistance
+            </Button>
+            <button
+              type="button"
+              onClick={() => setIsGuidanceModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#1D4ED8] bg-white border border-[#2563EB]/30 rounded-lg hover:bg-[#F4F8FF] transition-colors cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5 text-[#2563EB]" />
+              <span>Official Registration Guidance</span>
+            </button>
+          </div>
         </div>
 
         {/* Verification and Source Badge Bar */}
@@ -218,6 +242,19 @@ export const HospitalDetailPage: React.FC = () => {
                     {hospital.coordinatorEmail}
                   </a>
                 </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-[#E2E8F0]/50">
+                  <Globe className="w-3.5 h-3.5 text-[#2563EB]" />
+                  <span className="text-[#64748B]">Official Portal: </span>
+                  <a
+                    href={hospital.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#2563EB] font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>Visit Hospital Portal</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
 
               <div className="p-3 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/15 text-[11px] text-[#0F172A] leading-relaxed">
@@ -244,6 +281,21 @@ export const HospitalDetailPage: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {/* Hospital Assistance Request Modal */}
+      <HospitalAssistanceRequestModal
+        isOpen={isAssistanceModalOpen}
+        onClose={() => setIsAssistanceModalOpen(false)}
+        hospital={hospital}
+        initialOrgan={selectedOrganForRequest}
+      />
+
+      {/* Official Registration Guidance Modal */}
+      <OfficialRegistrationGuidanceModal
+        isOpen={isGuidanceModalOpen}
+        onClose={() => setIsGuidanceModalOpen(false)}
+        hospital={hospital}
+      />
 
       {/* Support Request Modal */}
       <RequestSupportModal

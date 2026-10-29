@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -28,7 +29,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -106,8 +107,8 @@ const ORGAN_OPTIONS: OrganDefinition[] = [
   },
   {
     id: 'bone_marrow',
-    label: 'Bone Marrow / HSCT',
-    badgeLabel: 'Bone Marrow / HSCT',
+    label: 'Bone Marrow / Stem Cell',
+    badgeLabel: 'Bone Marrow / Stem Cell',
     icon: Dna,
     description: 'Hematopoietic stem cell transplantation & marrow registries'
   }
@@ -119,13 +120,22 @@ export const DirectoryPage: React.FC = () => {
   // Search, filter, and location state from URL params or defaults
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   
-  // Selected organs array (parsed from URL or defaults to ['all'])
-  const selectedOrgans = useMemo(() => {
+  // Single selected organ from URL params (defaults to 'all')
+  const selectedOrgan = useMemo(() => {
     const raw = searchParams.get('organ');
-    if (!raw || raw === 'all') return ['all'];
-    const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
-    return parts.length > 0 ? parts : ['all'];
+    if (!raw || raw === 'all') return 'all';
+    const first = raw.split(',')[0]?.trim();
+    return first || 'all';
   }, [searchParams]);
+
+  // Selected organs array for hooks and backwards-compatibility
+  const selectedOrgans = useMemo(() => {
+    return selectedOrgan === 'all' ? ['all'] : [selectedOrgan];
+  }, [selectedOrgan]);
+
+  const activeOrganDef = useMemo(() => {
+    return ORGAN_OPTIONS.find((o) => o.id === selectedOrgan) || ORGAN_OPTIONS[0];
+  }, [selectedOrgan]);
 
   const [selectedState, setSelectedState] = useState(searchParams.get('state') || 'all');
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'all');
@@ -137,9 +147,39 @@ export const DirectoryPage: React.FC = () => {
   const [selectedHospital, setSelectedHospital] = useState<VerifiedHospital | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
   const [isMobileFilterDrawerOpen, setIsMobileFilterDrawerOpen] = useState(false);
+  const [isOrganDropdownOpen, setIsOrganDropdownOpen] = useState(false);
+  const organDropdownRef = useRef<HTMLDivElement>(null);
 
-  // View mode: on desktop 'both' | 'list' | 'map'; on mobile, tabs toggle between 'list' and 'map'
-  const [desktopViewMode, setDesktopViewMode] = useState<'both' | 'list' | 'map'>('both');
+  // Close organ dropdown on outside click or Escape key
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        organDropdownRef.current &&
+        !organDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOrganDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOrganDropdownOpen(false);
+      }
+    };
+
+    if (isOrganDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOrganDropdownOpen]);
+
+  // View mode: on desktop 'both' | 'list'; on mobile, tabs toggle between 'list' and 'map'
+  const [desktopViewMode, setDesktopViewMode] = useState<'both' | 'list'>('both');
   const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 4;
@@ -269,6 +309,7 @@ export const DirectoryPage: React.FC = () => {
     }
     setSearchParams(newParams);
     setCurrentPage(1);
+    setIsOrganDropdownOpen(false);
   };
 
   const handleClearOrgans = () => {
@@ -365,15 +406,6 @@ export const DirectoryPage: React.FC = () => {
             <List className="w-3.5 h-3.5" />
             <span>List Only</span>
           </button>
-          <button
-            onClick={() => setDesktopViewMode('map')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'map' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>Map Only</span>
-          </button>
         </div>
       </div>
 
@@ -401,110 +433,9 @@ export const DirectoryPage: React.FC = () => {
         </button>
       </div>
 
-      {/* 1. Filter by Organ Program - Simple, Clean Vertical List System */}
-      <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] space-y-2.5">
-        <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
-              Filter by Organ Program
-            </h2>
-            <p className="text-[11px] text-[#64748B] mt-0.5">
-              Select or deselect organ transplantation programs to narrow verified centers
-            </p>
-          </div>
-          {selectedOrgans.length > 0 && !selectedOrgans.includes('all') && (
-            <button
-              type="button"
-              onClick={handleClearOrgans}
-              className="text-xs text-[#2563EB] font-semibold hover:text-[#1D4ED8] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>Reset to All Programs</span>
-            </button>
-          )}
-        </div>
-
-        {/* Clean, responsive vertical list */}
-        <div
-          role="group"
-          aria-label="Organ programs list"
-          className="divide-y divide-[#E2E8F0]/70 rounded-lg border border-[#E2E8F0] bg-white overflow-hidden max-h-72 overflow-y-auto"
-        >
-          {ORGAN_OPTIONS.map((organ) => {
-            const Icon = organ.icon;
-            const isAll = organ.id === 'all';
-            const isSelected = isAll
-              ? selectedOrgans.length === 0 || selectedOrgans.includes('all')
-              : selectedOrgans.includes(organ.id);
-            const count = organCounts[organ.id] ?? 0;
-
-            return (
-              <label
-                key={organ.id}
-                className={`flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs transition-colors cursor-pointer select-none ${
-                  isSelected
-                    ? 'bg-[#F4F8FF] text-[#1D4ED8] font-semibold'
-                    : 'bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Selection Checkbox Indicator */}
-                  <span
-                    className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${
-                      isSelected
-                        ? 'bg-[#2563EB] border border-[#2563EB] text-white'
-                        : 'border border-[#CBD5E1] bg-white'
-                    }`}
-                  >
-                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                  </span>
-
-                  {/* Native hidden checkbox for accessibility and keyboard navigation */}
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleOrganToggle(organ.id)}
-                    aria-label={organ.label}
-                    className="sr-only"
-                  />
-
-                  {/* Organ Icon & Label */}
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#2563EB]' : 'text-[#64748B]'}`} />
-                  <span className="truncate">{organ.label}</span>
-                </div>
-
-                {/* Registry Hospital Count Badge */}
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    isSelected
-                      ? 'bg-[#2563EB] text-white'
-                      : 'bg-[#F4F8FF] text-[#64748B] border border-[#E2E8F0]'
-                  }`}
-                >
-                  {count}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-
-        {/* Accessible hidden select for backward-compatibility with screen readers & test automation */}
-        <select
-          aria-label="Filter by organ program"
-          value={selectedOrgans[0] || 'all'}
-          onChange={(e) => handleOrganSelect(e.target.value)}
-          className="sr-only"
-        >
-          {ORGAN_OPTIONS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.badgeLabel}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Search, Location, and Filter Controls */}
       <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E2E8F0] space-y-3">
-        {/* Top Search Bar & Mobile Filter Trigger */}
+        {/* Top Search Bar, Single Organ Program Dropdown Button & Mobile Filter Trigger */}
         <div className="flex flex-col sm:flex-row gap-2.5">
           {/* Text Search Input */}
           <div className="relative flex-1">
@@ -532,6 +463,115 @@ export const DirectoryPage: React.FC = () => {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+
+          {/* Compact Single Dropdown Button: Filter by Organ Program */}
+          <div className="relative shrink-0" ref={organDropdownRef}>
+            <button
+              type="button"
+              id="organ-filter-dropdown-btn"
+              aria-expanded={isOrganDropdownOpen}
+              aria-haspopup="listbox"
+              onClick={() => setIsOrganDropdownOpen(!isOrganDropdownOpen)}
+              className={`w-full sm:w-auto h-full min-h-[38px] px-3.5 py-2 rounded-lg border text-xs font-semibold flex items-center justify-between gap-2.5 transition-all cursor-pointer select-none ${
+                selectedOrgan && selectedOrgan !== 'all'
+                  ? 'bg-[#F4F8FF] border-[#2563EB] text-[#1D4ED8] ring-1 ring-[#2563EB]/20 shadow-xs'
+                  : 'bg-white border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC] hover:border-[#CBD5E1]'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {React.createElement(activeOrganDef.icon, {
+                  className: `w-4 h-4 shrink-0 ${
+                    selectedOrgan && selectedOrgan !== 'all' ? 'text-[#2563EB]' : 'text-[#64748B]'
+                  }`
+                })}
+                <span className="truncate">Filter by Organ Program</span>
+                {selectedOrgan && selectedOrgan !== 'all' && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#2563EB] text-white text-[10px] font-bold">
+                    {activeOrganDef.label}
+                  </span>
+                )}
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
+                  isOrganDropdownOpen ? 'rotate-180 text-[#2563EB]' : 'text-[#64748B]'
+                }`}
+              />
+            </button>
+
+            {/* Compact Dropdown Menu with animation */}
+            {isOrganDropdownOpen && (
+              <div
+                role="menu"
+                aria-label="Filter by organ program options"
+                className="absolute right-0 sm:left-auto sm:right-0 mt-1.5 w-72 max-h-80 overflow-y-auto bg-white rounded-xl shadow-xl border border-[#E2E8F0] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100"
+              >
+                <div className="px-3 py-1.5 border-b border-[#E2E8F0] mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+                    Select Organ Program
+                  </span>
+                </div>
+                {ORGAN_OPTIONS.map((organ) => {
+                  const Icon = organ.icon;
+                  const isSelected =
+                    organ.id === 'all'
+                      ? selectedOrgan === 'all'
+                      : selectedOrgan === organ.id;
+                  const count = organCounts[organ.id] ?? 0;
+
+                  return (
+                    <button
+                      key={organ.id}
+                      type="button"
+                      role="menuitem"
+                      aria-label={organ.label}
+                      onClick={() => handleOrganSelect(organ.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 text-xs transition-colors cursor-pointer text-left ${
+                        isSelected
+                          ? 'bg-[#F4F8FF] text-[#1D4ED8] font-semibold'
+                          : 'text-[#0F172A] hover:bg-[#F8FAFC]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon
+                          className={`w-4 h-4 shrink-0 ${
+                            isSelected ? 'text-[#2563EB]' : 'text-[#64748B]'
+                          }`}
+                        />
+                        <span className="truncate">{organ.label}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            isSelected
+                              ? 'bg-[#2563EB] text-white'
+                              : 'bg-[#F1F5F9] text-[#64748B]'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#2563EB] stroke-[2.5]" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Accessible hidden select for screen readers & test automation */}
+            <select
+              aria-label="Filter by organ program"
+              value={selectedOrgan}
+              onChange={(e) => handleOrganSelect(e.target.value)}
+              className="sr-only"
+            >
+              {ORGAN_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Mobile Filter Button (< lg) */}
@@ -749,60 +789,21 @@ export const DirectoryPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Mobile Organ Program List */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#0F172A]">Organ Programs</label>
-                <div className="divide-y divide-[#E2E8F0]/70 rounded-lg border border-[#E2E8F0] bg-white overflow-hidden max-h-48 overflow-y-auto">
-                  {ORGAN_OPTIONS.map((organ) => {
-                    const Icon = organ.icon;
-                    const isAll = organ.id === 'all';
-                    const isSelected = isAll
-                      ? selectedOrgans.length === 0 || selectedOrgans.includes('all')
-                      : selectedOrgans.includes(organ.id);
-                    const count = organCounts[organ.id] ?? 0;
-
-                    return (
-                      <label
-                        key={organ.id}
-                        className={`flex items-center justify-between gap-2.5 px-3 py-2 text-xs transition-colors cursor-pointer select-none ${
-                          isSelected
-                            ? 'bg-[#F4F8FF] text-[#1D4ED8] font-semibold'
-                            : 'bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span
-                            className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors ${
-                              isSelected
-                                ? 'bg-[#2563EB] border border-[#2563EB] text-white'
-                                : 'border border-[#CBD5E1] bg-white'
-                            }`}
-                          >
-                            {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                          </span>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleOrganToggle(organ.id)}
-                            aria-label={`Mobile ${organ.label}`}
-                            className="sr-only"
-                          />
-                          <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#2563EB]' : 'text-[#64748B]'}`} />
-                          <span className="truncate">{organ.label}</span>
-                        </div>
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                            isSelected
-                              ? 'bg-[#2563EB] text-white'
-                              : 'bg-[#F4F8FF] text-[#64748B] border border-[#E2E8F0]'
-                          }`}
-                        >
-                          {count}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+              {/* Mobile Filter by Organ Program */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-[#0F172A]">Filter by Organ Program</label>
+                <select
+                  aria-label="Mobile filter by organ program"
+                  value={selectedOrgan}
+                  onChange={(e) => handleOrganSelect(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] cursor-pointer"
+                >
+                  {ORGAN_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label} ({organCounts[opt.id] ?? 0} centers)
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* State (Country filter removed) */}
@@ -980,7 +981,7 @@ export const DirectoryPage: React.FC = () => {
           )}
 
           {/* Hospital Cards Grid */}
-          {((desktopViewMode !== 'map' && (typeof window === 'undefined' || window.innerWidth >= 1024)) || mobileTab === 'list') && (
+          {((typeof window === 'undefined' || window.innerWidth >= 1024) || mobileTab === 'list') && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedHospitals.map((hospital) => {
                 const isVerified = hospital.reviewStatus === 'verified';

@@ -40,27 +40,35 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
     vi.restoreAllMocks();
   });
 
-  describe('1. Organ Program List System & Selection', () => {
-    it('renders all statutory organ programs in a simple vertical list with checkboxes and badge counts', async () => {
+  describe('1. Organ Program Single Dropdown Selection', () => {
+    it('renders a single compact Filter by Organ Program dropdown button containing all organ options', async () => {
       renderDirectoryWithQuery();
 
-      expect(screen.getByText(/filter by organ program/i)).toBeInTheDocument();
-      expect(screen.getByLabelText('All Organ Programs')).toBeInTheDocument();
-      expect(screen.getByLabelText('Kidney')).toBeInTheDocument();
-      expect(screen.getByLabelText('Liver')).toBeInTheDocument();
-      expect(screen.getByLabelText('Heart')).toBeInTheDocument();
-      expect(screen.getByLabelText('Lung')).toBeInTheDocument();
-      expect(screen.getByLabelText('Pancreas')).toBeInTheDocument();
-      expect(screen.getByLabelText('Intestine')).toBeInTheDocument();
-      expect(screen.getByLabelText('Cornea')).toBeInTheDocument();
-      expect(screen.getByLabelText('Bone Marrow / HSCT')).toBeInTheDocument();
+      const dropdownBtn = screen.getByRole('button', { name: /filter by organ program/i });
+      expect(dropdownBtn).toBeInTheDocument();
+
+      // Open the dropdown menu
+      fireEvent.click(dropdownBtn);
+
+      expect(screen.getByRole('menuitem', { name: 'All Organ Programs' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Kidney' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Liver' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Heart' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Lung' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Pancreas' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Intestine' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Cornea' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /Bone Marrow/i })).toBeInTheDocument();
     });
 
-    it('filters centers by selecting Heart from the organ list', async () => {
+    it('filters centers by selecting Heart from the organ dropdown and displays selected organ value', async () => {
       renderDirectoryWithQuery();
 
-      const heartCheckbox = screen.getByLabelText('Heart');
-      fireEvent.click(heartCheckbox);
+      const dropdownBtn = screen.getByRole('button', { name: /filter by organ program/i });
+      fireEvent.click(dropdownBtn);
+
+      const heartOption = screen.getByRole('menuitem', { name: 'Heart' });
+      fireEvent.click(heartOption);
 
       await waitFor(() => {
         // AIIMS and Madras Medical College support Heart
@@ -69,33 +77,46 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
         // PGIMER and ILBS do not support heart in our dataset
         expect(screen.queryByText(/Institute of Liver and Biliary Sciences/i)).not.toBeInTheDocument();
       });
+
+      // Selected organ value should be displayed inside the dropdown button
+      expect(dropdownBtn).toHaveTextContent(/Heart/i);
     });
 
-    it('allows users to select and deselect organ programs', async () => {
+    it('allows users to select an organ and clear the filter with All Organ Programs', async () => {
       renderDirectoryWithQuery();
 
-      const kidneyCheckbox = screen.getByLabelText('Kidney');
-      
-      // Select Kidney
-      fireEvent.click(kidneyCheckbox);
+      const dropdownBtn = screen.getByRole('button', { name: /filter by organ program/i });
+      fireEvent.click(dropdownBtn);
+
+      const heartOption = screen.getByRole('menuitem', { name: 'Heart' });
+      fireEvent.click(heartOption);
+
       await waitFor(() => {
         expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
-        expect(screen.queryByText(/National Institute of Mental Health/i)).not.toBeInTheDocument();
+        // PGIMER does not support Heart
+        expect(screen.queryByText(/Postgraduate Institute of Medical Education/i)).not.toBeInTheDocument();
       });
 
-      // Deselect Kidney by clicking it again
-      fireEvent.click(kidneyCheckbox);
+      // Clear filter by opening dropdown and selecting "All Organ Programs"
+      fireEvent.click(dropdownBtn);
+      const allOption = screen.getByRole('menuitem', { name: 'All Organ Programs' });
+      fireEvent.click(allOption);
+
       await waitFor(() => {
-        // Deselecting defaults back to all programs, displaying All India Institute and other centers
+        // Clearing filter displays ILBS and KEM on page 1
         expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.getByText(/Institute of Liver and Biliary Sciences/i)).toBeInTheDocument();
       });
     });
 
-    it('filters centers by Intestine and shows verified statutory license citation', async () => {
+    it('filters centers by Intestine from dropdown and shows verified statutory license citation', async () => {
       renderDirectoryWithQuery();
 
-      const intestineCheckbox = screen.getByLabelText('Intestine');
-      fireEvent.click(intestineCheckbox);
+      const dropdownBtn = screen.getByRole('button', { name: /filter by organ program/i });
+      fireEvent.click(dropdownBtn);
+
+      const intestineOption = screen.getByRole('menuitem', { name: 'Intestine' });
+      fireEvent.click(intestineOption);
 
       await waitFor(() => {
         // AIIMS has verified statutory intestine license
@@ -171,9 +192,11 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
     it('combines organ, state, and verified-only filters', async () => {
       renderDirectoryWithQuery();
 
-      // Filter by Cornea
-      const corneaCheckbox = screen.getByLabelText('Cornea');
-      fireEvent.click(corneaCheckbox);
+      // Filter by Cornea via dropdown
+      const dropdownBtn = screen.getByRole('button', { name: /filter by organ program/i });
+      fireEvent.click(dropdownBtn);
+      const corneaOption = screen.getByRole('menuitem', { name: 'Cornea' });
+      fireEvent.click(corneaOption);
 
       // Filter by State Karnataka
       const stateSelect = screen.getByLabelText(/filter by state/i);

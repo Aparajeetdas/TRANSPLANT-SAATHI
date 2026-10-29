@@ -25,7 +25,7 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
   const [selectedState, setSelectedState] = useState<string>('all');
   const [activeHospitalModal, setActiveHospitalModal] = useState<VerifiedHospital | null>(null);
   const [selectedMapHospital, setSelectedMapHospital] = useState<VerifiedHospital | null>(null);
-  const [viewMode, setViewMode] = useState<'both' | 'map' | 'list'>('both');
+  const [viewMode, setViewMode] = useState<'both' | 'list'>('both');
 
   const states = useMemo(() => {
     const list = Array.from(new Set(hospitals.map((h) => h.state)));
@@ -93,16 +93,6 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
             }`}
           >
             List Only
-          </button>
-          <button
-            onClick={() => setViewMode('map')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'map'
-                ? 'bg-[#2563EB] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            Map Only
           </button>
         </div>
       </div>
@@ -208,9 +198,8 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
             />
           )}
 
-          {/* Hospital Cards Grid (shown in 'both' or 'list' modes) */}
-          {viewMode !== 'map' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Hospital Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredHospitals.map((hospital) => (
                 <div
                   key={hospital.id}
@@ -286,7 +275,6 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
                 </div>
               ))}
             </div>
-          )}
         </div>
       )}
 

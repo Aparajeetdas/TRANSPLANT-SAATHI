@@ -154,6 +154,88 @@ export interface SanitizedAssistanceRequest {
   isAuthorizedViewer: boolean;
 }
 
+export type HospitalAssistanceStatus =
+  | 'draft'
+  | 'submitted'
+  | 'awaiting_hospital_review'
+  | 'additional_info_required'
+  | 'under_hospital_review'
+  | 'referred_official_registration'
+  | 'assistance_in_progress'
+  | 'closed'
+  | 'cancelled';
+
+export type HospitalAssistanceCategory =
+  | 'transplant_guidance'
+  | 'official_registration'
+  | 'document_guidance'
+  | 'hospital_coordination'
+  | 'financial_counseling';
+
+export interface RequestStatusHistoryEntry {
+  id: string;
+  fromStatus: HospitalAssistanceStatus | null;
+  toStatus: HospitalAssistanceStatus;
+  updatedBy: string;
+  updatedByRole: UserRole;
+  timestamp: string;
+  note?: string;
+}
+
+export interface RequestPatientMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  message: string;
+  timestamp: string;
+}
+
+export interface RequestInternalNote {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: UserRole;
+  note: string;
+  timestamp: string;
+}
+
+export interface HospitalAssistanceRequest {
+  id: string;
+  referenceNumber: string; // Non-guessable identifier e.g. "TS-REQ-2026-KD-8472"
+  patientId: string;
+  patientPublicId: string; // Anonymous public identifier e.g. "TS-7K9P-X4QM"
+  patientName: string;
+  contactPhone: string;
+  contactEmail: string;
+  preferredContactMethod: 'phone' | 'email' | 'in_app';
+  hospitalId: string;
+  hospitalName: string;
+  organProgram: OrganType;
+  requestCategory: HospitalAssistanceCategory;
+  description: string;
+  consentGiven: boolean;
+  consentTimestamp: string;
+  status: HospitalAssistanceStatus;
+  statusHistory: RequestStatusHistoryEntry[];
+  patientNotes: RequestPatientMessage[];
+  internalNotes: RequestInternalNote[]; // Restricted strictly to hospital coordinators & admins
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InAppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'request_submitted' | 'status_update' | 'info_required' | 'message_received';
+  requestId?: string;
+  referenceNumber?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface HospitalIntakeRecord {
   id: string;
   hospitalId: string;

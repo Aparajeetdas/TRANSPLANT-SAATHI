@@ -6,14 +6,22 @@ import {
   DonorProfile,
   ExpensePlan,
   HospitalApplication,
+  HospitalAssistanceCategory,
+  HospitalAssistanceRequest,
+  HospitalAssistanceStatus,
   HospitalIntakeRecord,
   HospitalReviewStatus,
+  InAppNotification,
   OfficialResource,
+  OrganType,
   PatientChecklistItem,
   PledgedOrganCategory,
   PublicDonorIdentity,
   PublicUserIdentity,
+  RequestInternalNote,
+  RequestPatientMessage,
   RequestStatus,
+  RequestStatusHistoryEntry,
   SanitizedAssistanceRequest,
   UserProfile,
   UserRole,
@@ -30,6 +38,8 @@ import {
   DEFAULT_DONOR_MILESTONES,
   DEMO_PROFILES,
   INITIAL_DONOR_PROFILES,
+  INITIAL_HOSPITAL_REQUESTS,
+  INITIAL_IN_APP_NOTIFICATIONS,
   SYNTHETIC_HOSPITAL_INTAKES,
   VERIFIED_HOSPITALS
 } from './mockData';
@@ -37,6 +47,8 @@ import {
 const STORAGE_KEYS = {
   CURRENT_USER: 'transplant_saathi_current_user',
   REQUESTS: 'transplant_saathi_assistance_requests',
+  HOSPITAL_REQUESTS: 'transplant_saathi_hospital_requests',
+  IN_APP_NOTIFICATIONS: 'transplant_saathi_in_app_notifications',
   HOSPITALS: 'transplant_saathi_hospitals',
   INTAKES: 'transplant_saathi_intakes',
   AUDIT_LOGS: 'transplant_saathi_audit_logs',
@@ -1585,4 +1597,550 @@ export const getHospitalApplicationByUserId = (userId: string): HospitalApplicat
   const apps = getStoredHospitalApplications();
   return apps.find((a) => a.userId === userId) || null;
 };
+
+// ==============================================================================
+// VERIFIED ORGAN TRANSPLANT REQUEST AND HOSPITAL COORDINATION SYSTEM
+// ==============================================================================
+
+const ORGAN_PREFIX_MAP: Record<OrganType, string> = {
+  kidney: 'KD',
+  liver: 'LV',
+  heart: 'HT',
+  lungs: 'LG',
+  cornea: 'CR',
+  pancreas: 'PC',
+  bone_marrow: 'BM',
+  intestine: 'IT'
+};
+
+/**
+ * Generate a cryptographically non-guessable reference code
+ * Format: TS-REQ-2026-XX-XXXX (e.g. TS-REQ-2026-KD-7K9P)
+ */
+export const generateHospitalRequestReference = (organ: OrganType): string => {
+  const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  const prefix = ORGAN_PREFIX_MAP[organ] || 'OT';
+  const year = new Date().getFullYear();
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `TS-REQ-${year}-${prefix}-${code}`;
+};
+
+/**
+ * Retrieve all stored hospital assistance requests from localStorage
+ */
+export const getStoredHospitalRequests = (): HospitalAssistanceRequest[] => {
+  if (typeof window === 'undefined') return INITIAL_HOSPITAL_REQUESTS;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.HOSPITAL_REQUESTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.HOSPITAL_REQUESTS, JSON.stringify(INITIAL_HOSPITAL_REQUESTS));
+      return INITIAL_HOSPITAL_REQUESTS;
+    }
+    return JSON.parse(raw) as HospitalAssistanceRequest[];
+  } catch (err) {
+    console.error('Failed to parse hospital requests from storage:', err);
+    return INITIAL_HOSPITAL_REQUESTS;
+  }
+};
+
+/**
+ * Persist hospital assistance requests to localStorage
+ */
+export const saveStoredHospitalRequests = (requests: HospitalAssistanceRequest[]): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.HOSPITAL_REQUESTS, JSON.stringify(requests));
+  } catch (err) {
+    console.error('Failed to save hospital requests to storage:', err);
+  }
+};
+
+/**
+ * In-App Notification Store
+ */
+export const getStoredInAppNotifications = (userId?: string): InAppNotification[] => {
+  if (typeof window === 'undefined') {
+    return userId ? INITIAL_IN_APP_NOTIFICATIONS.filter((n) => n.userId === userId) : INITIAL_IN_APP_NOTIFICATIONS;
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.IN_APP_NOTIFICATIONS);
+    const notifications: InAppNotification[] = raw ? JSON.parse(raw) : INITIAL_IN_APP_NOTIFICATIONS;
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.IN_APP_NOTIFICATIONS, JSON.stringify(INITIAL_IN_APP_NOTIFICATIONS));
+    }
+    return userId ? notifications.filter((n) => n.userId === userId) : notifications;
+  } catch (err) {
+    console.error('Failed to parse in-app notifications:', err);
+    return [];
+  }
+};
+
+export const saveStoredInAppNotifications = (notifications: InAppNotification[]): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.IN_APP_NOTIFICATIONS, JSON.stringify(notifications));
+  } catch (err) {
+    console.error('Failed to save in-app notifications:', err);
+  }
+};
+
+export const addInAppNotification = (
+  notif: Omit<InAppNotification, 'id' | 'createdAt' | 'isRead'>
+): InAppNotification => {
+  const newNotif: InAppNotification = {
+    ...notif,
+    id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  };
+  const current = getStoredInAppNotifications();
+  saveStoredInAppNotifications([newNotif, ...current]);
+  return newNotif;
+};
+
+export const markInAppNotificationAsRead = (id: string): void => {
+  const current = getStoredInAppNotifications();
+  const updated = current.map((n) => (n.id === id ? { ...n, isRead: true } : n));
+  saveStoredInAppNotifications(updated);
+};
+
+/**
+ * Create a new hospital assistance request
+ * Validates hospital programs, prevents duplicate submissions, and initiates audit trail
+ */
+export interface CreateHospitalRequestInput {
+  hospitalId: string;
+  organProgram: OrganType;
+  requestCategory: HospitalAssistanceCategory;
+  description: string;
+  preferredContactMethod: 'phone' | 'email' | 'in_app';
+  contactPhone?: string;
+  contactEmail?: string;
+  consentGiven: boolean;
+}
+
+export const createHospitalAssistanceRequest = (
+  input: CreateHospitalRequestInput,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) {
+    return { success: false, error: 'Authentication required to submit assistance requests.' };
+  }
+
+  if (!input.consentGiven) {
+    return {
+      success: false,
+      error: 'Informed consent is required to transmit administrative inquiries to verified hospital teams.'
+    };
+  }
+
+  if (!input.description || input.description.trim().length < 10) {
+    return {
+      success: false,
+      error: 'Please provide at least 10 characters describing the assistance required.'
+    };
+  }
+
+  // Validate hospital and supported organ programs
+  const hospitals = getStoredHospitals();
+  const hospital = hospitals.find((h) => h.id === input.hospitalId);
+  if (!hospital) {
+    return { success: false, error: 'Selected hospital could not be verified in the national registry.' };
+  }
+
+  if (!hospital.organsSupported.includes(input.organProgram)) {
+    return {
+      success: false,
+      error: `Hospital ${hospital.name} does not hold a verified statutory transplant license for ${input.organProgram}.`
+    };
+  }
+
+  // Duplicate Submission Guard: Check if identical request submitted within 30 seconds
+  const existing = getStoredHospitalRequests();
+  const now = new Date();
+  const recentDuplicate = existing.find(
+    (r) =>
+      r.patientId === actor.id &&
+      r.hospitalId === input.hospitalId &&
+      r.organProgram === input.organProgram &&
+      now.getTime() - new Date(r.createdAt).getTime() < 30000
+  );
+
+  if (recentDuplicate) {
+    return {
+      success: false,
+      error: 'A request for this hospital and organ program was just submitted. Please wait before re-submitting.'
+    };
+  }
+
+  const nowIso = now.toISOString();
+  const referenceNumber = generateHospitalRequestReference(input.organProgram);
+  const requestId = `htr-${Date.now()}`;
+
+  const initialHistory: RequestStatusHistoryEntry = {
+    id: `sh-${Date.now()}-1`,
+    fromStatus: null,
+    toStatus: 'submitted',
+    updatedBy: actor.fullName,
+    updatedByRole: actor.role,
+    timestamp: nowIso,
+    note: 'Transplant assistance inquiry submitted by patient.'
+  };
+
+  const newRequest: HospitalAssistanceRequest = {
+    id: requestId,
+    referenceNumber,
+    patientId: actor.id,
+    patientPublicId: actor.publicId || generatePublicUserId(),
+    patientName: actor.fullName,
+    contactPhone: input.contactPhone || actor.phone || '+91-XXXXXXXXXX',
+    contactEmail: input.contactEmail || actor.email,
+    preferredContactMethod: input.preferredContactMethod,
+    hospitalId: hospital.id,
+    hospitalName: hospital.name,
+    organProgram: input.organProgram,
+    requestCategory: input.requestCategory,
+    description: input.description.trim(),
+    consentGiven: true,
+    consentTimestamp: nowIso,
+    status: 'submitted',
+    statusHistory: [initialHistory],
+    patientNotes: [],
+    internalNotes: [],
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+
+  const updatedRequests = [newRequest, ...existing];
+  saveStoredHospitalRequests(updatedRequests);
+
+  // In-app notification for patient
+  addInAppNotification({
+    userId: actor.id,
+    title: 'Assistance Request Submitted',
+    message: `Your assistance request ${referenceNumber} for ${hospital.name} (${input.organProgram}) has been successfully submitted.`,
+    type: 'request_submitted',
+    requestId,
+    referenceNumber
+  });
+
+  // Audit Log
+  recordAuditLog(actor, 'HOSPITAL_ASSISTANCE_REQUEST_CREATED', 'hospital_transplant_requests', requestId, {
+    referenceNumber,
+    hospitalId: hospital.id,
+    hospitalName: hospital.name,
+    organProgram: input.organProgram,
+    category: input.requestCategory
+  });
+
+  return { success: true, request: newRequest };
+};
+
+/**
+ * Retrieve requests for a patient.
+ * SECURITY: Strips `internalNotes` so patients CANNOT see confidential hospital coordinator notes.
+ */
+export const getHospitalRequestsForPatient = (patientId: string): HospitalAssistanceRequest[] => {
+  const all = getStoredHospitalRequests();
+  return all
+    .filter((r) => r.patientId === patientId)
+    .map((r) => ({
+      ...r,
+      internalNotes: [] // Strictly redacted for patient viewers
+    }));
+};
+
+/**
+ * Helper to check if a user is authorized for a specific hospital
+ */
+export const isUserAuthorizedForHospital = (actor: UserProfile, hospitalId: string): boolean => {
+  if (actor.role === 'admin') return true;
+  if (actor.role !== 'hospital_staff') return false;
+  if (actor.hospitalVerificationStatus !== 'verified') return false;
+
+  const hospitals = getStoredHospitals();
+  const hospital = hospitals.find((h) => h.id === hospitalId);
+  if (!hospital) return false;
+
+  // Strict institutional isolation match
+  const matchesRegNum =
+    actor.hospitalRegistrationNumber &&
+    actor.hospitalRegistrationNumber.trim().toUpperCase() === hospital.registrationNumber.trim().toUpperCase();
+
+  const matchesOrgName =
+    actor.organization &&
+    (actor.organization.toLowerCase().includes(hospital.name.toLowerCase().substring(0, 15)) ||
+      hospital.name.toLowerCase().includes(actor.organization.toLowerCase().substring(0, 15)));
+
+  return Boolean(matchesRegNum || matchesOrgName);
+};
+
+/**
+ * Retrieve requests for a verified hospital.
+ * SECURITY:
+ * 1. Requires verified hospital_staff or admin role.
+ * 2. Unverified hospital accounts cannot access sensitive requests.
+ * 3. Enforces strict isolation: Hospital B cannot access Hospital A's requests.
+ */
+export const getHospitalRequestsForHospital = (
+  hospitalId: string,
+  actor: UserProfile
+): HospitalAssistanceRequest[] => {
+  if (!actor) return [];
+
+  // 1. Role Check
+  if (actor.role !== 'hospital_staff' && actor.role !== 'admin') {
+    return [];
+  }
+
+  // 2. Verification Guard
+  if (actor.role === 'hospital_staff' && actor.hospitalVerificationStatus !== 'verified') {
+    return [];
+  }
+
+  // 3. Institutional Isolation Check
+  if (actor.role === 'hospital_staff' && !isUserAuthorizedForHospital(actor, hospitalId)) {
+    return [];
+  }
+
+  const all = getStoredHospitalRequests();
+  return all.filter((r) => r.hospitalId === hospitalId);
+};
+
+/**
+ * Update request status (e.g. Under Review, Additional Info Required, Closed, etc.)
+ */
+export const updateHospitalRequestStatus = (
+  requestId: string,
+  newStatus: HospitalAssistanceStatus,
+  note: string,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) return { success: false, error: 'Unauthorized' };
+
+  const all = getStoredHospitalRequests();
+  const target = all.find((r) => r.id === requestId);
+  if (!target) return { success: false, error: 'Request not found' };
+
+  // Authorization check
+  if (actor.role !== 'admin' && !isUserAuthorizedForHospital(actor, target.hospitalId)) {
+    return { success: false, error: 'Permission denied: Unauthorized hospital coordinator.' };
+  }
+
+  const nowIso = new Date().toISOString();
+  const historyEntry: RequestStatusHistoryEntry = {
+    id: `sh-${Date.now()}`,
+    fromStatus: target.status,
+    toStatus: newStatus,
+    updatedBy: actor.fullName,
+    updatedByRole: actor.role,
+    timestamp: nowIso,
+    note: note.trim()
+  };
+
+  const updated: HospitalAssistanceRequest = {
+    ...target,
+    status: newStatus,
+    statusHistory: [...target.statusHistory, historyEntry],
+    updatedAt: nowIso
+  };
+
+  const updatedAll = all.map((r) => (r.id === requestId ? updated : r));
+  saveStoredHospitalRequests(updatedAll);
+
+  // Notify patient of status update
+  addInAppNotification({
+    userId: target.patientId,
+    title: `Request Status: ${newStatus.replace(/_/g, ' ').toUpperCase()}`,
+    message: `Hospital coordinator ${actor.fullName} updated your request ${target.referenceNumber}: ${note}`,
+    type: 'status_update',
+    requestId: target.id,
+    referenceNumber: target.referenceNumber
+  });
+
+  // Audit log
+  recordAuditLog(actor, 'HOSPITAL_REQUEST_STATUS_UPDATED', 'hospital_transplant_requests', requestId, {
+    referenceNumber: target.referenceNumber,
+    fromStatus: target.status,
+    toStatus: newStatus,
+    note
+  });
+
+  return { success: true, request: updated };
+};
+
+/**
+ * Add internal confidential note (Hospital Staff Only - Never exposed to patient)
+ */
+export const addHospitalRequestInternalNote = (
+  requestId: string,
+  note: string,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) return { success: false, error: 'Unauthorized' };
+
+  const all = getStoredHospitalRequests();
+  const target = all.find((r) => r.id === requestId);
+  if (!target) return { success: false, error: 'Request not found' };
+
+  // Authorization check
+  if (actor.role !== 'admin' && !isUserAuthorizedForHospital(actor, target.hospitalId)) {
+    return { success: false, error: 'Permission denied: Only verified hospital staff can add internal notes.' };
+  }
+
+  const internalNoteItem: RequestInternalNote = {
+    id: `in-${Date.now()}`,
+    authorId: actor.id,
+    authorName: actor.fullName,
+    authorRole: actor.role,
+    note: note.trim(),
+    timestamp: new Date().toISOString()
+  };
+
+  const updated: HospitalAssistanceRequest = {
+    ...target,
+    internalNotes: [...target.internalNotes, internalNoteItem],
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedAll = all.map((r) => (r.id === requestId ? updated : r));
+  saveStoredHospitalRequests(updatedAll);
+
+  recordAuditLog(actor, 'HOSPITAL_REQUEST_INTERNAL_NOTE_ADDED', 'hospital_transplant_requests', requestId, {
+    referenceNumber: target.referenceNumber
+  });
+
+  return { success: true, request: updated };
+};
+
+/**
+ * Add patient-visible message (coordination communication)
+ */
+export const addHospitalRequestPatientMessage = (
+  requestId: string,
+  message: string,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) return { success: false, error: 'Unauthorized' };
+
+  const all = getStoredHospitalRequests();
+  const target = all.find((r) => r.id === requestId);
+  if (!target) return { success: false, error: 'Request not found' };
+
+  const isPatient = target.patientId === actor.id;
+  const isHospital = isUserAuthorizedForHospital(actor, target.hospitalId);
+
+  if (!isPatient && !isHospital && actor.role !== 'admin') {
+    return { success: false, error: 'Permission denied: Not a participant in this coordination thread.' };
+  }
+
+  const messageItem: RequestPatientMessage = {
+    id: `pm-${Date.now()}`,
+    senderId: actor.id,
+    senderName: actor.fullName,
+    senderRole: actor.role,
+    message: message.trim(),
+    timestamp: new Date().toISOString()
+  };
+
+  const updated: HospitalAssistanceRequest = {
+    ...target,
+    patientNotes: [...target.patientNotes, messageItem],
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedAll = all.map((r) => (r.id === requestId ? updated : r));
+  saveStoredHospitalRequests(updatedAll);
+
+  // Notify recipient
+  const recipientId = isPatient ? 'hospital_staff' : target.patientId;
+  if (!isPatient) {
+    addInAppNotification({
+      userId: recipientId,
+      title: 'Message from Hospital Coordinator',
+      message: `${actor.fullName}: ${message.substring(0, 80)}...`,
+      type: 'message_received',
+      requestId: target.id,
+      referenceNumber: target.referenceNumber
+    });
+  }
+
+  recordAuditLog(actor, 'HOSPITAL_REQUEST_PATIENT_MESSAGE_SENT', 'hospital_transplant_requests', requestId, {
+    referenceNumber: target.referenceNumber
+  });
+
+  return { success: true, request: updated };
+};
+
+/**
+ * Request additional information from patient
+ * Sets status to 'additional_info_required' and adds patient message
+ */
+export const requestHospitalAdditionalInformation = (
+  requestId: string,
+  message: string,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) return { success: false, error: 'Unauthorized' };
+
+  const statusRes = updateHospitalRequestStatus(requestId, 'additional_info_required', `Information requested: ${message}`, actor);
+  if (!statusRes.success || !statusRes.request) return statusRes;
+
+  return addHospitalRequestPatientMessage(requestId, message, actor);
+};
+
+/**
+ * Cancel a request (by patient or coordinator)
+ */
+export const cancelHospitalAssistanceRequest = (
+  requestId: string,
+  reason: string,
+  actor: UserProfile
+): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
+  if (!actor) return { success: false, error: 'Unauthorized' };
+
+  const all = getStoredHospitalRequests();
+  const target = all.find((r) => r.id === requestId);
+  if (!target) return { success: false, error: 'Request not found' };
+
+  const isPatient = target.patientId === actor.id;
+  const isAuthorizedHospital = isUserAuthorizedForHospital(actor, target.hospitalId);
+
+  if (!isPatient && !isAuthorizedHospital && actor.role !== 'admin') {
+    return { success: false, error: 'Unauthorized to cancel this request.' };
+  }
+
+  const nowIso = new Date().toISOString();
+  const historyEntry: RequestStatusHistoryEntry = {
+    id: `sh-${Date.now()}`,
+    fromStatus: target.status,
+    toStatus: 'cancelled',
+    updatedBy: actor.fullName,
+    updatedByRole: actor.role,
+    timestamp: nowIso,
+    note: `Cancellation reason: ${reason}`
+  };
+
+  const updated: HospitalAssistanceRequest = {
+    ...target,
+    status: 'cancelled',
+    statusHistory: [...target.statusHistory, historyEntry],
+    updatedAt: nowIso
+  };
+
+  const updatedAll = all.map((r) => (r.id === requestId ? updated : r));
+  saveStoredHospitalRequests(updatedAll);
+
+  recordAuditLog(actor, 'HOSPITAL_REQUEST_CANCELLED', 'hospital_transplant_requests', requestId, {
+    referenceNumber: target.referenceNumber,
+    cancelledBy: actor.fullName,
+    reason
+  });
+
+  return { success: true, request: updated };
+};
+
 

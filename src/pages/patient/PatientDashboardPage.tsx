@@ -4,6 +4,7 @@ import {
   Compass,
   FileText,
   HelpCircle,
+  Hospital,
   IndianRupee,
   ShieldCheck
 } from 'lucide-react';
@@ -14,16 +15,31 @@ import { useAuth } from '../../context/AuthContext';
 import { AdministrativeChecklist } from '../../features/patient/AdministrativeChecklist';
 import { AppointmentNotesLogger } from '../../features/patient/AppointmentNotesLogger';
 import { ExpensePlanner } from '../../features/patient/ExpensePlanner';
+import { HospitalAssistanceTracker } from '../../features/patient/HospitalAssistanceTracker';
 import { JourneyTracker } from '../../features/patient/JourneyTracker';
 import { PrivacySettings } from '../../features/patient/PrivacySettings';
 import { SavedHospitalsAndResources } from '../../features/patient/SavedHospitalsAndResources';
 import { SupportRequestTracker } from '../../features/patient/SupportRequestTracker';
 
-export const PatientDashboardPage: React.FC = () => {
+interface PatientDashboardPageProps {
+  initialTab?:
+    | 'hospital_assistance'
+    | 'journey'
+    | 'checklist'
+    | 'notes'
+    | 'support'
+    | 'expenses'
+    | 'saved'
+    | 'privacy';
+}
+
+export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
+  initialTab = 'journey'
+}) => {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    'journey' | 'checklist' | 'notes' | 'support' | 'expenses' | 'saved' | 'privacy'
-  >('journey');
+    'hospital_assistance' | 'journey' | 'checklist' | 'notes' | 'support' | 'expenses' | 'saved' | 'privacy'
+  >(initialTab);
 
   return (
     <div className="py-6 sm:py-10 space-y-6 sm:space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-left">
@@ -89,6 +105,7 @@ export const PatientDashboardPage: React.FC = () => {
       <div className="border-b border-[#E2E8F0]">
         <nav className="flex space-x-2 sm:space-x-4 overflow-x-auto pb-px" aria-label="Tabs">
           {[
+            { id: 'hospital_assistance', label: 'Hospital Assistance', icon: Hospital },
             { id: 'journey', label: 'Journey Tracker', icon: Compass },
             { id: 'checklist', label: 'Administrative Checklist', icon: CheckSquare },
             { id: 'notes', label: 'Doctor Notes', icon: FileText },
@@ -119,6 +136,7 @@ export const PatientDashboardPage: React.FC = () => {
 
       {/* Tab Panels */}
       <div>
+        {activeTab === 'hospital_assistance' && <HospitalAssistanceTracker />}
         {activeTab === 'journey' && <JourneyTracker />}
         {activeTab === 'checklist' && <AdministrativeChecklist />}
         {activeTab === 'notes' && <AppointmentNotesLogger />}

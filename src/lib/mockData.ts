@@ -1,4 +1,14 @@
-import { DonorMilestoneItem, DonorProfile, FinancialScheme, HospitalIntakeRecord, StatutoryDocumentRequirement, UserProfile, VerifiedHospital } from '../types';
+import {
+  DonorMilestoneItem,
+  DonorProfile,
+  FinancialScheme,
+  HospitalAssistanceRequest,
+  HospitalIntakeRecord,
+  InAppNotification,
+  StatutoryDocumentRequirement,
+  UserProfile,
+  VerifiedHospital
+} from '../types';
 
 export const VERIFIED_HOSPITALS: VerifiedHospital[] = [
   {
@@ -615,8 +625,36 @@ export const DEMO_PROFILES: UserProfile[] = [
     phone: '+91-11-26588500',
     role: 'hospital_staff',
     organization: 'AIIMS Apex Transplant Center',
+    hospitalVerificationStatus: 'verified',
+    hospitalRegistrationNumber: 'NOTTO-APEX-ND-001',
     isActive: true,
     createdAt: '2026-01-10T10:00:00Z'
+  },
+  {
+    id: 'demo-hospital-staff-pgimer',
+    publicId: 'TS-8H3W-M2NP',
+    email: 'coordinator.pgimer@hospital.gov.in',
+    fullName: 'Dr. Jaspreet Singh (PGIMER Transplant Coordinator)',
+    phone: '+91-172-2747585',
+    role: 'hospital_staff',
+    organization: 'Postgraduate Institute of Medical Education and Research (PGIMER)',
+    hospitalVerificationStatus: 'verified',
+    hospitalRegistrationNumber: 'ROTTO-NORTH-CH-002',
+    isActive: true,
+    createdAt: '2026-01-12T11:00:00Z'
+  },
+  {
+    id: 'demo-hospital-staff-unverified',
+    publicId: 'TS-2K9Q-X1RT',
+    email: 'liaison.unverified@private-clinic.com',
+    fullName: 'Ramesh Gupta (Unverified Liaison)',
+    phone: '+91-11-44332211',
+    role: 'hospital_staff',
+    organization: 'Apex Community Clinic (Unverified)',
+    hospitalVerificationStatus: 'pending',
+    hospitalRegistrationNumber: 'PENDING-REG-991',
+    isActive: true,
+    createdAt: '2026-02-01T15:00:00Z'
   },
   {
     id: 'demo-admin',
@@ -756,6 +794,169 @@ export const DEFAULT_DONOR_MILESTONES: DonorMilestoneItem[] = [
     description: 'Save or print your official Transplant Saathi emergency donor card with your Public Donor ID and emergency contact info.',
     isCompleted: false,
     statutoryNotice: 'Keep your digital donor card in your wallet or smartphone for emergency identification by authorized trauma coordinators.'
+  }
+];
+
+export const INITIAL_HOSPITAL_REQUESTS: HospitalAssistanceRequest[] = [
+  {
+    id: 'htr-101',
+    referenceNumber: 'TS-REQ-2026-KD-7821',
+    patientId: 'demo-patient',
+    patientPublicId: 'TS-7K9P-X4QM',
+    patientName: 'Rajesh Sharma',
+    contactPhone: '+91-98765-43210',
+    contactEmail: 'patient.sharma@example.com',
+    preferredContactMethod: 'phone',
+    hospitalId: 'hosp-001',
+    hospitalName: 'All India Institute of Medical Sciences (AIIMS) - Apex Centre',
+    organProgram: 'kidney',
+    requestCategory: 'official_registration',
+    description: 'Seeking assistance with Form 1 living-donor paperwork and NOTTO registration guidance for kidney transplant.',
+    consentGiven: true,
+    consentTimestamp: '2026-03-20T10:00:00Z',
+    status: 'under_hospital_review',
+    statusHistory: [
+      {
+        id: 'sh-001',
+        fromStatus: null,
+        toStatus: 'submitted',
+        updatedBy: 'Rajesh Sharma',
+        updatedByRole: 'patient',
+        timestamp: '2026-03-20T10:00:00Z',
+        note: 'Assistance request created by patient.'
+      },
+      {
+        id: 'sh-002',
+        fromStatus: 'submitted',
+        toStatus: 'under_hospital_review',
+        updatedBy: 'Dr. Priya Raman (Transplant Liaison)',
+        updatedByRole: 'hospital_staff',
+        timestamp: '2026-03-21T11:30:00Z',
+        note: 'Initial review initiated by AIIMS Transplant Nodal Desk.'
+      }
+    ],
+    patientNotes: [
+      {
+        id: 'pm-001',
+        senderId: 'demo-hospital-staff',
+        senderName: 'Dr. Priya Raman (Transplant Liaison)',
+        senderRole: 'hospital_staff',
+        message: 'Initial dossier received. Please prepare copy of Government ID and Form 1 affidavit for Authorization Committee review.',
+        timestamp: '2026-03-21T11:35:00Z'
+      }
+    ],
+    internalNotes: [
+      {
+        id: 'in-001',
+        authorId: 'demo-hospital-staff',
+        authorName: 'Dr. Priya Raman (Transplant Liaison)',
+        authorRole: 'hospital_staff',
+        note: 'Patient has completed initial creatinine workup. Verify state domicile certificate for SOTTO Delhi list before next Authorization Committee date.',
+        timestamp: '2026-03-21T11:32:00Z'
+      }
+    ],
+    createdAt: '2026-03-20T10:00:00Z',
+    updatedAt: '2026-03-21T11:35:00Z'
+  },
+  {
+    id: 'htr-102',
+    referenceNumber: 'TS-REQ-2026-LV-3419',
+    patientId: 'demo-family',
+    patientPublicId: 'TS-3B8R-N2WV',
+    patientName: 'Ananya Sharma (Caregiver)',
+    contactPhone: '+91-98765-43211',
+    contactEmail: 'family.ananya@example.com',
+    preferredContactMethod: 'email',
+    hospitalId: 'hosp-001',
+    hospitalName: 'All India Institute of Medical Sciences (AIIMS) - Apex Centre',
+    organProgram: 'liver',
+    requestCategory: 'hospital_coordination',
+    description: 'Seeking appointment guidance with Hepatology OPD and clarification on Ayushman Bharat cashless authorization package.',
+    consentGiven: true,
+    consentTimestamp: '2026-03-22T14:15:00Z',
+    status: 'awaiting_hospital_review',
+    statusHistory: [
+      {
+        id: 'sh-003',
+        fromStatus: null,
+        toStatus: 'submitted',
+        updatedBy: 'Ananya Sharma (Caregiver)',
+        updatedByRole: 'family',
+        timestamp: '2026-03-22T14:15:00Z',
+        note: 'Assistance request created by family caregiver.'
+      },
+      {
+        id: 'sh-004',
+        fromStatus: 'submitted',
+        toStatus: 'awaiting_hospital_review',
+        updatedBy: 'System Automation',
+        updatedByRole: 'admin',
+        timestamp: '2026-03-22T14:16:00Z',
+        note: 'Assigned to AIIMS Transplant Nodal Queue.'
+      }
+    ],
+    patientNotes: [],
+    internalNotes: [],
+    createdAt: '2026-03-22T14:15:00Z',
+    updatedAt: '2026-03-22T14:16:00Z'
+  },
+  {
+    id: 'htr-103',
+    referenceNumber: 'TS-REQ-2026-HR-9081',
+    patientId: 'patient-punjab-01',
+    patientPublicId: 'TS-4P9M-K1LT',
+    patientName: 'Harpreet Singh',
+    contactPhone: '+91-98140-55667',
+    contactEmail: 'harpreet.singh@example.com',
+    preferredContactMethod: 'phone',
+    hospitalId: 'hosp-002',
+    hospitalName: 'Postgraduate Institute of Medical Education and Research (PGIMER)',
+    organProgram: 'heart',
+    requestCategory: 'transplant_guidance',
+    description: 'Advanced cardiomyopathy patient referred for ROTTO North heart allocation registry pre-evaluation.',
+    consentGiven: true,
+    consentTimestamp: '2026-03-23T09:00:00Z',
+    status: 'submitted',
+    statusHistory: [
+      {
+        id: 'sh-005',
+        fromStatus: null,
+        toStatus: 'submitted',
+        updatedBy: 'Harpreet Singh',
+        updatedByRole: 'patient',
+        timestamp: '2026-03-23T09:00:00Z',
+        note: 'Assistance request created.'
+      }
+    ],
+    patientNotes: [],
+    internalNotes: [],
+    createdAt: '2026-03-23T09:00:00Z',
+    updatedAt: '2026-03-23T09:00:00Z'
+  }
+];
+
+export const INITIAL_IN_APP_NOTIFICATIONS: InAppNotification[] = [
+  {
+    id: 'notif-001',
+    userId: 'demo-patient',
+    title: 'Hospital Review Initiated',
+    message: 'Dr. Priya Raman at AIIMS Apex Centre has placed your Kidney assistance request (TS-REQ-2026-KD-7821) under hospital review.',
+    type: 'status_update',
+    requestId: 'htr-101',
+    referenceNumber: 'TS-REQ-2026-KD-7821',
+    isRead: false,
+    createdAt: '2026-03-21T11:30:00Z'
+  },
+  {
+    id: 'notif-002',
+    userId: 'demo-patient',
+    title: 'Message from Hospital Coordinator',
+    message: 'AIIMS Transplant Liaison sent a message regarding Form 1 documentation requirements.',
+    type: 'message_received',
+    requestId: 'htr-101',
+    referenceNumber: 'TS-REQ-2026-KD-7821',
+    isRead: false,
+    createdAt: '2026-03-21T11:35:00Z'
   }
 ];
 
