@@ -5,7 +5,10 @@ import { OrganType, UserProfile, VerifiedHospital } from '../types';
 export interface HospitalFilterParams {
   searchQuery?: string;
   organ?: string;
+  country?: string;
   state?: string;
+  city?: string;
+  verifiedOnly?: boolean;
   reviewStatus?: string;
   sortBy?: 'name' | 'date' | 'beds';
   sortOrder?: 'asc' | 'desc';
@@ -34,11 +37,27 @@ export const useHospitals = (params?: HospitalFilterParams) => {
       }
 
       if (params?.organ && params.organ !== 'all') {
-        result = result.filter((h) => h.organsSupported.includes(params.organ as OrganType));
+        const raw = params.organ.toLowerCase();
+        const normalized = raw === 'lung' ? 'lungs' : raw === 'hsct' ? 'bone_marrow' : raw;
+        result = result.filter((h) => h.organsSupported.includes(normalized as OrganType));
+      }
+
+      if (params?.country && params.country !== 'all') {
+        if (params.country.toLowerCase() !== 'india') {
+          result = [];
+        }
       }
 
       if (params?.state && params.state !== 'all') {
-        result = result.filter((h) => h.state === params.state);
+        result = result.filter((h) => h.state.toLowerCase() === params.state!.toLowerCase());
+      }
+
+      if (params?.city && params.city !== 'all') {
+        result = result.filter((h) => h.city.toLowerCase() === params.city!.toLowerCase());
+      }
+
+      if (params?.verifiedOnly) {
+        result = result.filter((h) => h.reviewStatus === 'verified' && h.isVerified);
       }
 
       if (params?.reviewStatus && params.reviewStatus !== 'all') {

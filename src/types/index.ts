@@ -1,12 +1,12 @@
 export type UserRole = 'patient' | 'family' | 'volunteer' | 'hospital_staff' | 'admin' | 'donor';
 
-export type OrganType = 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow';
+export type OrganType = 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow' | 'intestine';
 
 export type RequestStatus = 'submitted' | 'under_review' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
 
 export type DonorPledgeStatus = 'pledged_interest' | 'notto_registered' | 'living_donor_candidate' | 'withdrawn';
 
-export type PledgedOrganCategory = 'all' | 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow' | 'tissues';
+export type PledgedOrganCategory = 'all' | 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow' | 'intestine' | 'tissues';
 
 export interface DonorProfile {
   id: string;

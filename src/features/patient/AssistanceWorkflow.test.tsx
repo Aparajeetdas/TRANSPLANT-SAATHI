@@ -170,7 +170,7 @@ describe('Assistance Request Workflow & Expense Planner Suite', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      saveStoredRequests([pendingReq, ...getStoredRequests()]);
+      saveStoredRequests([pendingReq]);
 
       renderWithRole(<SupportRequestTracker />, 'patient');
 

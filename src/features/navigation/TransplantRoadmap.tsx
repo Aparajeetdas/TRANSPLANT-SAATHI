@@ -66,6 +66,11 @@ export const TransplantRoadmap: React.FC<TransplantRoadmapProps> = ({
       title: 'Stem Cell / Bone Marrow Transplant (BMT)',
       highlight: 'Autologous or allogeneic living related / unrelated registry donor (DATRI / DKMS-BMST registries).',
       duration: 'HLA Search: 4-12 weeks'
+    },
+    intestine: {
+      title: 'Composite Intestinal Navigation',
+      highlight: 'Isolated small bowel or multivisceral deceased donor transplantation licensed under specialized NOTTO center authorization.',
+      duration: 'Waitlist: Urgency dependent'
     }
   };
 

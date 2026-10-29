@@ -1,0 +1,293 @@
+import '@testing-library/jest-dom/vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthProvider } from '../../context/AuthContext';
+import { VERIFIED_HOSPITALS } from '../../lib/mockData';
+import { saveStoredHospitals } from '../../lib/store';
+import { DirectoryPage } from '../../pages/public/DirectoryPage';
+import { HospitalDetailPage } from '../../pages/public/HospitalDetailPage';
+
+const renderDirectoryWithQuery = (initialPath = '/directory') => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/directory" element={<DirectoryPage />} />
+            <Route path="/hospitals/:id" element={<HospitalDetailPage />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+};
+
+describe('Organ-Based Hospital Discovery & Verification System', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveStoredHospitals(VERIFIED_HOSPITALS);
+    vi.restoreAllMocks();
+  });
+
+  describe('1. Organ Filters & Discovery', () => {
+    it('renders all statutory organ filter buttons with clear labels and badge counts', async () => {
+      renderDirectoryWithQuery();
+
+      expect(screen.getByRole('button', { name: /all organs/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /kidney/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /liver/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /heart/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /lung/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /pancreas/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /intestine/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cornea/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /bone marrow \/ hsct/i })).toBeInTheDocument();
+    });
+
+    it('filters centers by clicking the Heart organ filter', async () => {
+      renderDirectoryWithQuery();
+
+      const heartButton = screen.getByRole('button', { name: /heart/i });
+      fireEvent.click(heartButton);
+
+      await waitFor(() => {
+        // AIIMS and Madras Medical College support Heart
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.getByText(/Madras Medical College/i)).toBeInTheDocument();
+        // PGIMER and ILBS do not support heart in our dataset
+        expect(screen.queryByText(/Institute of Liver and Biliary Sciences/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('filters centers by Intestine and shows verified statutory license citation', async () => {
+      renderDirectoryWithQuery();
+
+      const intestineButton = screen.getByRole('button', { name: /intestine/i });
+      fireEvent.click(intestineButton);
+
+      await waitFor(() => {
+        // AIIMS has verified statutory intestine license
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.queryByText(/King Edward Memorial/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('highlights the selected organ service badge on matching hospital cards', async () => {
+      renderDirectoryWithQuery('/directory?organ=liver');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Institute of Liver and Biliary Sciences/i)).toBeInTheDocument();
+      });
+
+      // The active organ filter summary badge should be visible
+      expect(screen.getByText(/Organ: Liver/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('2. Search & Location Filters', () => {
+    it('searches hospitals by name', async () => {
+      renderDirectoryWithQuery();
+
+      const searchInput = screen.getByLabelText(/search verified hospitals/i);
+      fireEvent.change(searchInput, { target: { value: 'Postgraduate Institute' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Postgraduate Institute of Medical Education/i)).toBeInTheDocument();
+        expect(screen.queryByText(/All India Institute of Medical Sciences/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('searches hospitals by city', async () => {
+      renderDirectoryWithQuery();
+
+      const searchInput = screen.getByLabelText(/search verified hospitals/i);
+      fireEvent.change(searchInput, { target: { value: 'Chennai' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Madras Medical College/i)).toBeInTheDocument();
+        expect(screen.queryByText(/King Edward Memorial/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('filters by state and dynamically populates state-scoped cities', async () => {
+      renderDirectoryWithQuery();
+
+      const stateSelect = screen.getByLabelText(/filter by state/i);
+      fireEvent.change(stateSelect, { target: { value: 'Delhi' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.getByText(/Institute of Liver and Biliary Sciences/i)).toBeInTheDocument();
+        expect(screen.queryByText(/King Edward Memorial/i)).not.toBeInTheDocument();
+      });
+
+      // City select should now offer cities in Delhi
+      const citySelect = screen.getByLabelText(/filter by city/i);
+      expect(citySelect).toHaveTextContent(/All Cities in Delhi/i);
+      expect(citySelect).toHaveTextContent(/New Delhi/i);
+    });
+
+    it('filters by country (India vs all)', async () => {
+      renderDirectoryWithQuery();
+
+      const countrySelect = screen.getByLabelText(/filter by country/i);
+      fireEvent.change(countrySelect, { target: { value: 'India' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('3. Combined Filters & Verified-Only', () => {
+    it('combines organ, state, and verified-only filters', async () => {
+      renderDirectoryWithQuery();
+
+      // Filter by Cornea
+      const corneaBtn = screen.getByRole('button', { name: /cornea/i });
+      fireEvent.click(corneaBtn);
+
+      // Filter by State Karnataka
+      const stateSelect = screen.getByLabelText(/filter by state/i);
+      fireEvent.change(stateSelect, { target: { value: 'Karnataka' } });
+
+      await waitFor(() => {
+        // NIMHANS is in Karnataka and supports Cornea (reviewStatus: pending)
+        expect(screen.getByText(/National Institute of Mental Health and Neurosciences/i)).toBeInTheDocument();
+      });
+
+      // Now toggle Verified Only
+      const verifiedOnlyBtn = screen.getByRole('button', { name: /verified only/i });
+      fireEvent.click(verifiedOnlyBtn);
+
+      await waitFor(() => {
+        // Since NIMHANS is pending audit, it should now be excluded
+        expect(screen.queryByText(/National Institute of Mental Health and Neurosciences/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/no verified transplant centers found/i)).toBeInTheDocument();
+      });
+    });
+
+    it('clears all active filters when Clear filters is clicked', async () => {
+      renderDirectoryWithQuery('/directory?organ=heart&state=Delhi&verified_only=true');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Organ: Heart/i)).toBeInTheDocument();
+      });
+
+      const clearBtn = screen.getByRole('button', { name: /clear filters/i });
+      fireEvent.click(clearBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Organ: Heart/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.getByText(/King Edward Memorial/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('4. Mobile Layout & Filter Drawer', () => {
+    it('opens and closes the mobile filter drawer', async () => {
+      renderDirectoryWithQuery();
+
+      // Mobile filter trigger button
+      const mobileFilterBtn = screen.getByRole('button', { name: /open filter drawer/i });
+      fireEvent.click(mobileFilterBtn);
+
+      // Drawer should be open
+      expect(screen.getByRole('dialog', { name: /hospital filters/i })).toBeInTheDocument();
+      expect(screen.getByText(/Filter Hospital Directory/i)).toBeInTheDocument();
+
+      // Close button inside drawer
+      const closeBtn = screen.getByLabelText(/close filters drawer/i);
+      fireEvent.click(closeBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: /hospital filters/i })).not.toBeInTheDocument();
+      });
+    });
+
+    it('resets filters from inside the mobile filter drawer', async () => {
+      renderDirectoryWithQuery('/directory?q=AIIMS');
+
+      const mobileFilterBtn = screen.getByRole('button', { name: /open filter drawer/i });
+      fireEvent.click(mobileFilterBtn);
+
+      const resetAllBtn = screen.getByRole('button', { name: /reset all/i });
+      fireEvent.click(resetAllBtn);
+
+      const applyBtn = screen.getByRole('button', { name: /show results/i });
+      fireEvent.click(applyBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Institute of Liver and Biliary Sciences/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('5. Verified Official Contact & Details', () => {
+    it('renders official nodal coordinator phone, email and copy feedback', async () => {
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: writeTextMock,
+        },
+      });
+
+      renderDirectoryWithQuery();
+
+      await waitFor(() => {
+        expect(screen.getByText(/\+91-11-26588500/i)).toBeInTheDocument();
+      });
+
+      const copyButtons = screen.getAllByRole('button', { name: /copy/i });
+      fireEvent.click(copyButtons[0]);
+
+      expect(writeTextMock).toHaveBeenCalledWith('+91-11-26588500');
+      await waitFor(() => {
+        expect(screen.getByText(/copied/i)).toBeInTheDocument();
+      });
+    });
+
+    it('displays official verification status with verification date and demonstration badge', async () => {
+      renderDirectoryWithQuery();
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/NOTTO Verified/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/\(2026-03-15\)/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Demonstration Record/i).length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('6. Empty and Error States', () => {
+    it('renders empty state when no centers match combined filters and allows reset', async () => {
+      renderDirectoryWithQuery();
+
+      const searchInput = screen.getByLabelText(/search verified hospitals/i);
+      fireEvent.change(searchInput, { target: { value: 'NON_EXISTENT_CLINIC_9999' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/no verified transplant centers found/i)).toBeInTheDocument();
+        expect(screen.getByText(/In accordance with statutory guidelines, we do not list centers without verified accreditation records/i)).toBeInTheDocument();
+      });
+
+      const resetBtn = screen.getByRole('button', { name: /reset filters/i });
+      fireEvent.click(resetBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+      });
+    });
+  });
+});
