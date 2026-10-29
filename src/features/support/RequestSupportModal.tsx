@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { generatePublicUserId } from '../../lib/identity';
 import { getStoredRequests, recordAuditLog, saveStoredRequests } from '../../lib/store';
 import { AssistanceRequest, OrganType } from '../../types';
 
@@ -68,9 +69,12 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
       // Simulate network persistence
       await new Promise((resolve) => setTimeout(resolve, 400));
 
+      const assignedPublicId = currentUser?.publicId || generatePublicUserId();
+
       const newRequest: AssistanceRequest = {
         id: `req-${Date.now()}`,
         patientId: currentUser?.id || `anon-${Date.now()}`,
+        patientPublicId: assignedPublicId,
         patientName: data.patientName,
         contactPhone: data.contactPhone,
         organCategory: data.organCategory as OrganType,

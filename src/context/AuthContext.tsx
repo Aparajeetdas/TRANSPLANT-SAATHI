@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { generatePublicUserId } from '../lib/identity';
 import { DEMO_PROFILES } from '../lib/mockData';
-import { getStoredUser, recordAuditLog, setStoredUser } from '../lib/store';
+import { getStoredUser, recordAuditLog, setStoredUser, updateUserProfile as storeUpdateUserProfile } from '../lib/store';
 import { getAppBaseUrl, isSupabaseConfigured, supabase } from '../lib/supabase';
 import { UserProfile, UserRole } from '../types';
 
@@ -22,9 +23,10 @@ export interface AuthContextType {
     email: string,
     pass: string,
     fullName: string,
-    role?: 'patient' | 'family',
+    role?: 'patient' | 'family' | 'donor',
     phone?: string
   ) => Promise<{ success: boolean; error?: string; requiresEmailVerification?: boolean }>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   resetPasswordForEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -34,6 +36,7 @@ export interface AuthContextType {
   isVolunteer: boolean;
   isHospitalStaff: boolean;
   isAdmin: boolean;
+  isDonor: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,8 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         setSessionError(error.message);
       } else if (session?.user) {
+        const canonical = DEMO_PROFILES.find((p) => p.id === session.user.id || p.email === session.user.email);
         const profile: UserProfile = {
           id: session.user.id,
+          publicId: session.user.user_metadata?.public_id || canonical?.publicId || generatePublicUserId(),
           email: session.user.email || '',
           fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           role: (session.user.user_metadata?.role as UserRole) || 'patient',
@@ -85,8 +90,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         if (session?.user) {
+          const canonical = DEMO_PROFILES.find((p) => p.id === session.user.id || p.email === session.user.email);
           const profile: UserProfile = {
             id: session.user.id,
+            publicId: session.user.user_metadata?.public_id || canonical?.publicId || generatePublicUserId(),
             email: session.user.email || '',
             fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
             role: (session.user.user_metadata?.role as UserRole) || 'patient',
@@ -116,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchRole = (newRole: UserRole) => {
     const matchedProfile = DEMO_PROFILES.find((p) => p.role === newRole) || {
       id: createUniqueUserId(),
+      publicId: generatePublicUserId(),
       email: `${newRole}@transplantsaathi.org`,
       fullName: `Authorized ${newRole.replace('_', ' ').toUpperCase()}`,
       role: newRole,
@@ -178,8 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       if (data.user) {
+        const canonical = DEMO_PROFILES.find((p) => p.id === data.user.id || p.email === data.user.email);
         const profile: UserProfile = {
           id: data.user.id,
+          publicId: data.user.user_metadata?.public_id || canonical?.publicId || generatePublicUserId(),
           email: data.user.email || '',
           fullName: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
           role: (data.user.user_metadata?.role as UserRole) || 'patient',
@@ -219,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // New mock authenticated patient
     const fallbackProfile: UserProfile = {
       id: createUniqueUserId(),
+      publicId: generatePublicUserId(),
       email: cleanEmail,
       fullName: cleanEmail.split('@')[0].toUpperCase(),
       role: 'patient',
@@ -233,21 +244,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     pass: string,
     fullName: string,
-    role?: 'patient' | 'family',
+    role?: 'patient' | 'family' | 'donor',
     phone?: string
   ): Promise<{ success: boolean; error?: string; requiresEmailVerification?: boolean }> => {
     // SECURITY GUARD: Never allow public users to self-select privileged roles (volunteer, hospital_staff, admin)
     // Cast to check for any malicious attempt to pass a privileged role
     const attemptedRole = role as string | undefined;
-    if (attemptedRole && attemptedRole !== 'patient' && attemptedRole !== 'family') {
+    if (attemptedRole && attemptedRole !== 'patient' && attemptedRole !== 'family' && attemptedRole !== 'donor') {
       return {
         success: false,
         error:
-          'Security Policy Violation: Public registration is strictly restricted to Patients and Family Caregivers. Privileged roles (Admin, Hospital Staff, Volunteer) cannot be self-selected and must be authorized by institutional administrators.'
+          'Security Policy Violation: Public registration is strictly restricted to Patients, Family Caregivers, and Organ Donors. Privileged roles (Admin, Hospital Staff, Volunteer) cannot be self-selected and must be authorized by institutional administrators.'
       };
     }
 
-    const safeRole: UserRole = role === 'family' ? 'family' : 'patient';
+    const safeRole: UserRole = role === 'family' ? 'family' : role === 'donor' ? 'donor' : 'patient';
+    const assignedPublicId = generatePublicUserId();
 
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.auth.signUp({
@@ -257,7 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             full_name: fullName,
             phone: phone || '',
-            role: safeRole
+            role: safeRole,
+            public_id: assignedPublicId
           },
           emailRedirectTo: `${getAppBaseUrl()}/auth/verify-email`
         }
@@ -275,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         const newProfile: UserProfile = {
           id: data.user.id,
+          publicId: assignedPublicId,
           email: data.user.email || email,
           fullName,
           phone,
@@ -290,6 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Mock Mode Registration
     const newProfile: UserProfile = {
       id: createUniqueUserId(),
+      publicId: assignedPublicId,
       email,
       fullName,
       phone,
@@ -299,6 +314,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     loginAs(newProfile);
     return { success: true };
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUser) {
+      return { success: false, error: 'Authentication required to update profile settings.' };
+    }
+    const res = storeUpdateUserProfile(currentUser.id, updates, currentUser);
+    if (res.success && res.profile) {
+      setCurrentUserState(res.profile);
+      return { success: true };
+    }
+    return { success: false, error: res.error || 'Failed to update profile' };
   };
 
   const resetPasswordForEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -382,6 +409,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     loginWithPassword,
     signUpWithEmail,
+    updateProfile,
     resetPasswordForEmail,
     updatePassword,
     resendVerificationEmail,
@@ -390,7 +418,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isFamily: role === 'family',
     isVolunteer: role === 'volunteer',
     isHospitalStaff: role === 'hospital_staff',
-    isAdmin: role === 'admin'
+    isAdmin: role === 'admin',
+    isDonor: role === 'donor'
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

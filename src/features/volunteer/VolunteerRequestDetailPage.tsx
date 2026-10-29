@@ -217,9 +217,14 @@ export const VolunteerRequestDetailPage: React.FC = () => {
               <HeartHandshake className="w-3.5 h-3.5 text-[#2563EB]" />
               <span>Assigned Non-Clinical Task Dossier</span>
             </div>
-            <h1 className="text-2xl font-bold text-[#0F172A] font-heading">
-              {req.patientName}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold text-[#0F172A] font-heading">
+                {req.patientName}
+              </h1>
+              <span className="text-xs font-mono font-bold text-[#1D4ED8] bg-[#F4F8FF] px-2.5 py-1 rounded-full border border-[#2563EB]/25">
+                Public ID: {req.patientPublicId || 'TS-7K9P-X4QM'}
+              </span>
+            </div>
             <div className="text-xs text-[#2563EB] font-bold uppercase tracking-wider mt-0.5">
               {req.organCategory} — {req.supportType}
             </div>

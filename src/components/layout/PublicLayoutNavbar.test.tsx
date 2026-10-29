@@ -88,25 +88,23 @@ describe('Redesigned Transplant Saathi Navigation Bar', () => {
     expect(requestBtn).toBeInTheDocument();
     expect(requestBtn.className).toContain('bg-[#F4F8FF]');
 
-    // 3. Workspace Action: My Workspace
-    const workspaceBtn = screen.getByRole('link', { name: /my workspace/i });
-    expect(workspaceBtn).toBeInTheDocument();
-
-    // 4. Role Indicator
-    const roleBtn = screen.getByRole('button', { name: /simulate persona/i });
-    expect(roleBtn).toBeInTheDocument();
-    expect(roleBtn).toHaveTextContent(/patient/i);
-
-    // 5. User Profile Menu: Rajesh Sharma & Logout
+    // 3. Compact User Profile Dropdown
+    const profileBtn = screen.getByRole('button', { name: /user profile/i });
+    expect(profileBtn).toBeInTheDocument();
+    expect(profileBtn).toHaveTextContent(/patient/i);
     expect(screen.getByText('Rajesh Sharma')).toBeInTheDocument();
+
+    // Click profile dropdown to access Workspace, Role Switcher, and Logout
+    fireEvent.click(profileBtn);
+    expect(screen.getByRole('link', { name: /my workspace/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign out of account/i })).toBeInTheDocument();
   });
 
   it('opens and interacts with the simulation role switcher dropdown', async () => {
     renderNavbarWithRoute('/');
 
-    const roleBtn = screen.getByRole('button', { name: /simulate persona/i });
-    fireEvent.click(roleBtn);
+    const profileBtn = screen.getByRole('button', { name: /user profile/i });
+    fireEvent.click(profileBtn);
 
     expect(screen.getByText(/switch test role \(rbac simulation\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /volunteer/i })).toBeInTheDocument();
@@ -171,13 +169,8 @@ describe('Redesigned Transplant Saathi Navigation Bar', () => {
     it('verifies 1024px tablet landscape view renders navigation and compact controls without overflow', () => {
       setWindowWidth(1024);
       renderNavbarWithRoute('/');
-      expect(screen.getByRole('navigation', { name: /tablet navigation/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /more/i })).toBeInTheDocument();
-
-      // Click "More" menu to inspect collapsed links
-      const moreBtn = screen.getByRole('button', { name: /more/i });
-      fireEvent.click(moreBtn);
-      expect(screen.getAllByRole('link', { name: /^about$/i }).length).toBeGreaterThan(0);
+      expect(screen.getByRole('navigation', { name: /primary navigation/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^contact & help$/i })).toBeInTheDocument();
     });
 
     it('verifies 768px tablet portrait view renders accessible hamburger menu toggle', () => {

@@ -63,9 +63,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             </p>
 
             <div className="p-3.5 rounded-xl bg-white border border-[#E2E8F0] text-xs space-y-2">
-              <div className="font-semibold text-[#0F172A]">Need Institutional Access?</div>
+              <div className="font-semibold text-[#0F172A]">
+                {currentUser.hospitalVerificationStatus === 'pending'
+                  ? 'Institutional Verification Under Review'
+                  : 'Need Institutional Access?'}
+              </div>
               <p className="text-[11px] text-[#64748B] leading-relaxed">
-                Hospital staff and volunteer accounts cannot be self-selected through public registration. Contact your institutional transplant directorate or state SOTTO coordinator for clearance.
+                {currentUser.hospitalVerificationStatus === 'pending'
+                  ? `Your registration application for "${currentUser.organization || 'Healthcare Institution'}" is currently pending statutory review under THOTA 1994. Platform administrators must confirm your statutory accreditation before clinical portal privileges can be activated.`
+                  : 'Hospital staff and volunteer accounts cannot be self-selected through public registration. Contact your institutional transplant directorate or state SOTTO coordinator for clearance.'}
               </p>
             </div>
 

@@ -1,7 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Mail,
   MapPin,
   PhoneCall,
@@ -27,6 +29,13 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 export const ContactPage: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (key: string, text: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const {
     register,
@@ -68,32 +77,67 @@ export const ContactPage: React.FC = () => {
       </div>
 
       {/* Emergency & 24/7 National Helplines Bar */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-[#0F172A] text-white border border-[#2563EB]/30 space-y-4">
+      <div className="p-6 sm:p-8 rounded-3xl bg-[#0F172A] text-white border border-[#2563EB]/30 space-y-4 shadow-lg relative overflow-hidden">
+        <div className="pointer-events-none absolute -right-10 -bottom-10 w-60 h-60 bg-blue-500/10 rounded-full blur-2xl" />
+        
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#F4F8FF]">
           <ShieldAlert className="w-4 h-4 text-[#2563EB]" />
           <span>Statutory National Emergency Desks</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-          <div className="space-y-1">
-            <span className="text-xs text-white/70">NOTTO 24/7 National Toll-Free:</span>
-            <div className="text-xl font-extrabold text-white">
-              <a href="tel:1800114770" className="hover:underline">1800-11-4770</a>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 relative">
+          <div className="space-y-1.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
+            <span className="text-xs text-white/70 block">NOTTO 24/7 National Toll-Free:</span>
+            <div className="flex items-center justify-between gap-2">
+              <a href="tel:1800114770" className="text-xl font-extrabold text-white hover:text-blue-300 transition-colors">
+                1800-11-4770
+              </a>
+              <button
+                type="button"
+                onClick={() => handleCopy('notto', '1800-11-4770')}
+                className="text-[10px] font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded border border-white/20 shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Copy helpline number"
+              >
+                {copiedKey === 'notto' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedKey === 'notto' ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
             <p className="text-[11px] text-white/50">Official MoHFW national registry hotline</p>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-xs text-white/70">Ayushman Bharat (PM-JAY) Desk:</span>
-            <div className="text-xl font-extrabold text-white">
-              <a href="tel:14555" className="hover:underline">14555</a>
+          <div className="space-y-1.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
+            <span className="text-xs text-white/70 block">Ayushman Bharat (PM-JAY) Desk:</span>
+            <div className="flex items-center justify-between gap-2">
+              <a href="tel:14555" className="text-xl font-extrabold text-white hover:text-blue-300 transition-colors">
+                14555
+              </a>
+              <button
+                type="button"
+                onClick={() => handleCopy('pmjay', '14555')}
+                className="text-[10px] font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded border border-white/20 shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Copy helpline number"
+              >
+                {copiedKey === 'pmjay' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedKey === 'pmjay' ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
             <p className="text-[11px] text-white/50">Toll-free hospital pre-authorization helpline</p>
           </div>
 
-          <div className="space-y-1">
-            <span className="text-xs text-white/70">National Emergency Medical Call:</span>
-            <div className="text-xl font-extrabold text-white">
-              <a href="tel:112" className="hover:underline">112</a>
+          <div className="space-y-1.5 p-3.5 rounded-2xl bg-white/5 border border-white/10">
+            <span className="text-xs text-white/70 block">National Emergency Medical Call:</span>
+            <div className="flex items-center justify-between gap-2">
+              <a href="tel:112" className="text-xl font-extrabold text-white hover:text-blue-300 transition-colors">
+                112
+              </a>
+              <button
+                type="button"
+                onClick={() => handleCopy('call112', '112')}
+                className="text-[10px] font-bold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded border border-white/20 shrink-0 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Copy helpline number"
+              >
+                {copiedKey === 'call112' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedKey === 'call112' ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
             <p className="text-[11px] text-white/50">Centralized emergency response</p>
           </div>

@@ -8,12 +8,14 @@ import { HospitalStaffPortal } from '../../features/hospital/HospitalStaffPortal
 import { ExpensePlanner } from '../../features/patient/ExpensePlanner';
 import { SupportRequestTracker } from '../../features/patient/SupportRequestTracker';
 import { RequestSupportModal } from '../../features/support/RequestSupportModal';
+import { DEMO_PROFILES } from '../../lib/mockData';
 import {
   getStoredAuditLogs,
   getStoredExpensePlan,
   getStoredRequests,
   saveStoredExpensePlan,
-  saveStoredRequests
+  saveStoredRequests,
+  setStoredUser
 } from '../../lib/store';
 import { AssistanceRequest, ExpensePlan } from '../../types';
 
@@ -54,6 +56,7 @@ const renderWithRole = (
 describe('Assistance Request Workflow & Expense Planner Suite', () => {
   beforeEach(() => {
     localStorage.clear();
+    setStoredUser(DEMO_PROFILES[0]);
   });
 
   describe('Assistance Request Submission & Input Validation', () => {

@@ -52,10 +52,31 @@ export const PrivacyPage: React.FC = () => {
           </ul>
         </section>
 
-        {/* Section 3: Data Security & RLS */}
+        {/* Section 3: Anonymous User Identity System */}
         <section className="space-y-3">
           <h2 className="text-base font-bold text-[#0F172A] font-heading">
-            3. Database Authorization & Row Level Security (RLS)
+            3. Anonymous User Identity System (Permanent Public ID)
+          </h2>
+          <p className="text-[#64748B]">
+            To protect patient confidentiality and prevent social stigma or unsolicited contact, every registered patient and family caregiver is automatically assigned a permanent, unique, pseudonymous Public Identifier (e.g. <strong className="text-[#0F172A] font-mono">TS-7K9P-X4QM</strong>).
+          </p>
+          <ul className="list-disc list-inside space-y-1.5 text-[#64748B] pl-2">
+            <li>
+              <strong className="text-[#0F172A]">Default-Deny Privacy:</strong> Ordinary users and unassigned peer navigators see only your Public ID and general non-identifying preferences. Your real name, contact phone number, email address, and personal notes are never exposed.
+            </li>
+            <li>
+              <strong className="text-[#0F172A]">Immutability:</strong> The Public ID is cryptographically generated and immutable after registration, preventing impersonation or identifier manipulation.
+            </li>
+            <li>
+              <strong className="text-[#0F172A]">Clinical Separation:</strong> Official clinical decisions, HLA cross-matching, and THOTA Form clearances are conducted exclusively by accredited hospital nodal desks and statutory Authorization Committees.
+            </li>
+          </ul>
+        </section>
+
+        {/* Section 4: Data Security & RLS */}
+        <section className="space-y-3">
+          <h2 className="text-base font-bold text-[#0F172A] font-heading">
+            4. Database Authorization & Row Level Security (RLS)
           </h2>
           <p className="text-[#64748B]">
             All user data stored in PostgreSQL is protected by Row Level Security (RLS) policies. Each patient can only read and write their own records. Volunteers receive access solely to assigned non-clinical assistance requests. Service-role keys are never exposed in client code.

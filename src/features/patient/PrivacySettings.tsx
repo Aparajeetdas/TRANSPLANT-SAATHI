@@ -19,6 +19,7 @@ import { SkeletonCard } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../context/AuthContext';
 import { ConsentRecord } from '../../types';
+import { AnonymousIdentityCard } from '../identity/AnonymousIdentityCard';
 import { usePatientConsents } from './usePatientData';
 
 export const PrivacySettings: React.FC = () => {
@@ -38,6 +39,7 @@ export const PrivacySettings: React.FC = () => {
         dpdpComplianceVersion: '2026.1',
         userProfile: {
           id: currentUser?.id,
+          publicId: currentUser?.publicId,
           fullName: currentUser?.fullName,
           email: currentUser?.email,
           role: currentUser?.role,
@@ -51,7 +53,7 @@ export const PrivacySettings: React.FC = () => {
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `transplant_saathi_privacy_export_${currentUser?.id || 'patient'}.json`);
+      downloadAnchor.setAttribute('download', `transplant_saathi_privacy_export_${currentUser?.publicId || currentUser?.id || 'patient'}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -70,6 +72,9 @@ export const PrivacySettings: React.FC = () => {
 
   return (
     <div className="space-y-6 text-left">
+      {/* 1. Anonymous Public Identity Card */}
+      <AnonymousIdentityCard />
+
       {/* Header Banner */}
       <Card className="p-6 bg-white border-[#E2E8F0]">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

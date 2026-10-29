@@ -92,6 +92,16 @@ describe('Supabase Auth & Session Security Suite', () => {
   it('prohibits public users from selecting privileged roles during registration', async () => {
     renderAuthApp('/auth/register', null);
 
+    // Initial account selection step shows 3 registration options
+    expect(screen.getByText(/Create Your Transplant Saathi Account/i)).toBeInTheDocument();
+    expect(screen.getByText(/Register as a Donor/i)).toBeInTheDocument();
+    expect(screen.getByText(/Register as a Patient/i)).toBeInTheDocument();
+    expect(screen.getByText(/Register as a Hospital/i)).toBeInTheDocument();
+
+    // Select Patient registration
+    const patientContinueBtn = screen.getByRole('button', { name: /Continue as Patient/i });
+    fireEvent.click(patientContinueBtn);
+
     expect(screen.getByText(/Create Patient & Family Account/i)).toBeInTheDocument();
     expect(screen.getByText(/Strict Public Role Governance/i)).toBeInTheDocument();
 

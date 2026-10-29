@@ -183,8 +183,8 @@ describe('Comprehensive End-to-End Application Audit Suite', () => {
     it('audits ResourcesPage (/resources) - verifies financial schemes and THOTA forms', async () => {
       renderAppWithRoute('/resources');
       await waitFor(() => {
-        expect(screen.getByText(/official resources & regulatory directory/i)).toBeInTheDocument();
-        expect(screen.getByText(/thota legal forms & checklists/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: /official resources/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /legal forms/i })).toBeInTheDocument();
       });
     });
 
@@ -240,7 +240,7 @@ describe('Comprehensive End-to-End Application Audit Suite', () => {
     });
 
     it('audits RegisterPage (/auth/register) prohibiting privileged role selection', async () => {
-      renderAppWithRoute('/auth/register');
+      renderAppWithRoute('/auth/register?type=patient');
       expect(screen.getByText(/Create Patient & Family Account/i)).toBeInTheDocument();
       expect(screen.getByRole('combobox', { name: /select account type/i })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: /patient/i })).toBeInTheDocument();

@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-heading: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   --color-brand-white: #FFFFFF;
   --color-brand-ice: #F4F8FF;
@@ -22,11 +22,15 @@
     font-family: var(--font-sans);
     color: #0F172A;
     background-color: #FFFFFF;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     color: #0F172A;
+    font-weight: 700;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -36,18 +40,47 @@
   outline-offset: 2px;
 }
 
-/* Custom scrollbar in brand blue */
+/* Clean minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F4F8FF;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 4px;
+  background: #E2E8F0;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #CBD5E1;
+}
+
+/* Fast, smooth micro-interactions (150-200ms) */
+.transition-fast {
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Subtle Card Hover without gradients */
+.card-hover {
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.card-hover:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+/* Clean Button Press */
+button:active, a:active {
+  transform: scale(0.99);
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

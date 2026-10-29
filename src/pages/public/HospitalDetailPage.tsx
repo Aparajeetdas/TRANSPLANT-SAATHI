@@ -61,10 +61,10 @@ export const HospitalDetailPage: React.FC = () => {
       </div>
 
       {/* Main Header Card */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-[#F4F8FF] border border-[#2563EB]/25 space-y-6">
+      <div className="p-6 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-4">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="primary" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
                 Government Registered
               </Badge>

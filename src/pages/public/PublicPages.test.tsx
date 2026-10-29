@@ -47,9 +47,9 @@ describe('Public Pages & Responsive Layout Suite', () => {
 
   it('renders ResourcesPage with statutory forms and official portals', () => {
     renderWithProviders(<ResourcesPage />);
-    expect(screen.getByText(/official resources & regulatory directory/i)).toBeInTheDocument();
-    expect(screen.getByText(/thota legal forms & checklists/i)).toBeInTheDocument();
-    expect(screen.getByText(/financial assistance schemes/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /official resources/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /legal forms/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /financial assistance/i })).toBeInTheDocument();
   });
 
   it('renders HowItWorksPage with living and deceased donor journeys', () => {

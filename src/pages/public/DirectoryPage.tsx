@@ -1,6 +1,8 @@
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   ExternalLink,
   Hospital,
   Layers,
@@ -32,7 +34,8 @@ export const DirectoryPage: React.FC = () => {
   const [selectedReviewStatus, setSelectedReviewStatus] = useState(searchParams.get('status') || 'all');
   const [sortKey, setSortKey] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'beds-desc' | 'beds-asc'>('name-asc');
   const [selectedHospital, setSelectedHospital] = useState<VerifiedHospital | null>(null);
-  
+  const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+
   // View mode: on desktop 'both' | 'list' | 'map'; on mobile, tabs toggle between 'list' and 'map'
   const [desktopViewMode, setDesktopViewMode] = useState<'both' | 'list' | 'map'>('both');
   const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
@@ -116,19 +119,19 @@ export const DirectoryPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8 text-left">
+    <div className="space-y-6 text-left py-2">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4F8FF] border border-[#2563EB]/30 text-xs font-semibold text-[#1D4ED8] mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F4F8FF] border border-[#E2E8F0] text-xs font-semibold text-[#1D4ED8] mb-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
             <span>Official Government Registry Verified</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] font-heading">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
             Verified Transplant Center Directory
           </h1>
-          <p className="text-xs sm:text-sm text-[#64748B] mt-1 max-w-2xl">
-            Directory of licensed Indian organ transplantation hospitals verified against NOTTO, ROTTO, and state SOTTO gazette registries. Includes source URLs, audit dates, and review statuses.
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5 max-w-2xl">
+            Licensed Indian organ transplantation hospitals verified against NOTTO, ROTTO, and state SOTTO gazette registries.
           </p>
         </div>
 
@@ -136,8 +139,8 @@ export const DirectoryPage: React.FC = () => {
         <div className="hidden lg:inline-flex p-1 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0]">
           <button
             onClick={() => setDesktopViewMode('both')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'both' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              desktopViewMode === 'both' ? 'bg-[#2563EB] text-white' : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -145,8 +148,8 @@ export const DirectoryPage: React.FC = () => {
           </button>
           <button
             onClick={() => setDesktopViewMode('list')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'list' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              desktopViewMode === 'list' ? 'bg-[#2563EB] text-white' : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
             <List className="w-3.5 h-3.5" />
@@ -154,8 +157,8 @@ export const DirectoryPage: React.FC = () => {
           </button>
           <button
             onClick={() => setDesktopViewMode('map')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'map' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              desktopViewMode === 'map' ? 'bg-[#2563EB] text-white' : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
@@ -168,32 +171,32 @@ export const DirectoryPage: React.FC = () => {
       <div className="lg:hidden flex rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] p-1">
         <button
           onClick={() => setMobileTab('list')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'list' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B]'
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'list' ? 'bg-[#2563EB] text-white' : 'text-[#64748B]'
           }`}
           aria-label="Show list view"
         >
-          <List className="w-4 h-4" />
+          <List className="w-3.5 h-3.5" />
           <span>List View ({totalItems})</span>
         </button>
         <button
           onClick={() => setMobileTab('map')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'map' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B]'
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mobileTab === 'map' ? 'bg-[#2563EB] text-white' : 'text-[#64748B]'
           }`}
           aria-label="Show interactive map view"
         >
-          <MapPin className="w-4 h-4" />
+          <MapPin className="w-3.5 h-3.5" />
           <span>Map View ({totalItems})</span>
         </button>
       </div>
 
       {/* Search, Filter & Sort Controls */}
-      <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+      <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
           {/* Text Search */}
           <div className="md:col-span-4 relative">
-            <Search className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               aria-label="Search verified hospitals"
@@ -203,7 +206,7 @@ export const DirectoryPage: React.FC = () => {
                 handleFilterChange('q', e.target.value);
               }}
               placeholder="Search by hospital name, city, registration number, coordinator..."
-              className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0F172A] placeholder-[#64748B] focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="w-full pl-9 pr-7 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] placeholder-[#64748B] focus:border-[#2563EB] focus-visible:outline-none"
             />
             {searchQuery && (
               <button
@@ -212,7 +215,7 @@ export const DirectoryPage: React.FC = () => {
                   handleFilterChange('q', '');
                 }}
                 aria-label="Clear search query"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#0F172A] cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -228,9 +231,9 @@ export const DirectoryPage: React.FC = () => {
                 setSelectedOrgan(e.target.value);
                 handleFilterChange('organ', e.target.value);
               }}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="w-full px-2.5 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"
             >
-              <option value="all">All Organ Programs</option>
+              <option value="all">All Programs</option>
               <option value="kidney">Kidney (Renal)</option>
               <option value="liver">Liver (Hepatic)</option>
               <option value="heart">Heart (Cardiac)</option>
@@ -250,7 +253,7 @@ export const DirectoryPage: React.FC = () => {
                 setSelectedState(e.target.value);
                 handleFilterChange('state', e.target.value);
               }}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="w-full px-2.5 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"
             >
               <option value="all">All States</option>
               {states
@@ -272,7 +275,7 @@ export const DirectoryPage: React.FC = () => {
                 setSelectedReviewStatus(e.target.value);
                 handleFilterChange('status', e.target.value);
               }}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="w-full px-2.5 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"
             >
               <option value="all">All Review Statuses</option>
               <option value="verified">Verified by NOTTO/SOTTO</option>
@@ -281,7 +284,7 @@ export const DirectoryPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Sort By & Order */}
+          {/* Sort By */}
           <div className="md:col-span-2">
             <select
               aria-label="Sort hospitals by"
@@ -290,7 +293,7 @@ export const DirectoryPage: React.FC = () => {
                 setSortKey(e.target.value as typeof sortKey);
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2.5 rounded-xl border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="w-full px-2.5 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"
             >
               <option value="name-asc">Sort: Name (A-Z)</option>
               <option value="name-desc">Sort: Name (Z-A)</option>
@@ -302,7 +305,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Summary & ARIA Live announcement */}
+        {/* Filter Summary */}
         <div className="flex flex-wrap items-center justify-between text-xs text-[#64748B] pt-2 border-t border-[#E2E8F0]">
           <div aria-live="polite">
             Showing <span className="font-bold text-[#0F172A]">{paginatedHospitals.length}</span> of{' '}
@@ -313,7 +316,7 @@ export const DirectoryPage: React.FC = () => {
               onClick={clearAllFilters}
               className="font-semibold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
               <span>Reset all filters</span>
             </button>
           )}
@@ -322,14 +325,14 @@ export const DirectoryPage: React.FC = () => {
 
       {/* Loading & Error States */}
       {isLoading && (
-        <div className="p-12 text-center rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/20 space-y-2">
-          <RefreshCw className="w-6 h-6 animate-spin text-[#2563EB] mx-auto" />
+        <div className="p-10 text-center rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-2">
+          <RefreshCw className="w-5 h-5 animate-spin text-[#2563EB] mx-auto" />
           <p className="text-xs font-semibold text-[#0F172A]">Loading verified hospital registry records...</p>
         </div>
       )}
 
       {isError && (
-        <div className="p-6 rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/40 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] flex items-center justify-between">
           <p className="text-xs text-[#0F172A]">Failed to load directory records from the local store.</p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             Retry Query
@@ -337,13 +340,13 @@ export const DirectoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Content Area */}
+      {/* Empty State */}
       {!isLoading && !isError && totalItems === 0 && (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-[#E2E8F0] bg-[#F4F8FF]/30 space-y-3">
-          <Hospital className="w-10 h-10 text-[#2563EB] mx-auto" />
-          <h3 className="text-base font-bold text-[#0F172A]">No Verified Transplant Centers Found</h3>
-          <p className="text-xs text-[#64748B] max-w-md mx-auto">
-            No registered hospital matched your search and filter criteria. Try clearing filters or checking other organ programs.
+        <div className="p-10 text-center rounded-xl border border-[#E2E8F0] bg-[#F4F8FF]/30 space-y-2.5">
+          <Hospital className="w-8 h-8 text-[#2563EB] mx-auto" />
+          <h3 className="text-sm font-bold text-[#0F172A]">No Verified Transplant Centers Found</h3>
+          <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+            No registered hospital matched your search criteria. Try clearing filters or checking other organ programs.
           </p>
           <Button variant="outline" size="sm" onClick={clearAllFilters}>
             Reset Filters
@@ -351,9 +354,10 @@ export const DirectoryPage: React.FC = () => {
         </div>
       )}
 
+      {/* Main Hospital List & Map */}
       {!isLoading && !isError && totalItems > 0 && (
         <div className="space-y-6">
-          {/* Map View: visible on desktop when not in list-only, or on mobile when mobileTab is 'map' */}
+          {/* Map View */}
           {((desktopViewMode !== 'list' && window.innerWidth >= 1024) || mobileTab === 'map') && (
             <div className={desktopViewMode === 'both' ? 'hidden lg:block' : 'block'}>
               <HospitalMap
@@ -368,9 +372,9 @@ export const DirectoryPage: React.FC = () => {
             </div>
           )}
 
-          {/* Cards Grid: visible on desktop when not in map-only, or on mobile when mobileTab is 'list' */}
+          {/* Cards Grid */}
           {((desktopViewMode !== 'map' && window.innerWidth >= 1024) || mobileTab === 'list') && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedHospitals.map((hospital) => {
                 const isVerified = hospital.reviewStatus === 'verified';
                 const isPending = hospital.reviewStatus === 'pending';
@@ -379,77 +383,88 @@ export const DirectoryPage: React.FC = () => {
                 return (
                   <Card
                     key={hospital.id}
-                    className={`transition-all flex flex-col justify-between ${
+                    className={`p-5 flex flex-col justify-between transition-colors ${
                       isSelected
-                        ? 'border-[#2563EB] ring-2 ring-[#2563EB]/30 bg-[#F4F8FF]/30 shadow-md'
-                        : 'hover:border-[#2563EB]/40'
+                        ? 'border-[#2563EB] ring-1 ring-[#2563EB] bg-[#F4F8FF]/30'
+                        : 'hover:border-[#CBD5E1]'
                     }`}
                   >
                     <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge variant="primary" size="sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-[#1D4ED8] bg-[#F4F8FF] px-2 py-0.5 rounded border border-[#2563EB]/20">
                             {hospital.registrationNumber}
-                          </Badge>
-                          <Badge
-                            variant={isVerified ? 'primary' : isPending ? 'subtle' : 'outline'}
-                            size="sm"
-                          >
-                            {isVerified ? 'Verified by NOTTO/SOTTO' : isPending ? 'Pending Audit' : 'Flagged'}
-                          </Badge>
-                          <Badge variant="subtle" size="sm">
-                            Demonstration Record
-                          </Badge>
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[#64748B]">
+                            <span className={`w-1.5 h-1.5 rounded-full ${isVerified ? 'bg-emerald-500' : isPending ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                            <span>{isVerified ? 'NOTTO Verified' : isPending ? 'Pending Audit' : 'Flagged'}</span>
+                          </span>
                         </div>
-                        <span className="text-[11px] text-[#64748B] shrink-0">
-                          Audit: {hospital.sourceVerificationDate}
-                        </span>
+                        <Badge variant="subtle" size="sm">
+                          Demonstration Record
+                        </Badge>
                       </div>
 
                       <div>
-                        <h3 className="text-base font-bold text-[#0F172A] font-heading leading-tight">
+                        <h3 className="text-sm font-bold text-[#0F172A] leading-tight">
                           {hospital.name}
                         </h3>
-                        <p className="text-xs text-[#64748B] flex items-center gap-1 mt-1">
-                          <MapPin className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
+                        <p className="text-xs text-[#64748B] flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-[#2563EB] shrink-0" />
                           <span>{hospital.address}</span>
                         </p>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/15 text-xs text-[#0F172A] space-y-1">
-                        <div className="font-semibold text-[#1D4ED8]">{hospital.accreditation}</div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-[#64748B]">
-                          <Phone className="w-3 h-3 text-[#2563EB]" />
-                          <span>Nodal Desk: {hospital.coordinatorPhone} ({hospital.coordinatorName})</span>
+                      {/* Coordinator / Desk */}
+                      <div className="p-2.5 rounded-lg bg-[#F4F8FF] text-xs text-[#0F172A] space-y-1">
+                        <div className="font-semibold text-[#1D4ED8] flex items-center justify-between text-[11px]">
+                          <span>{hospital.accreditation}</span>
+                          <span className="text-[#64748B] font-normal">~{hospital.bedCapacityEstimate || 30} Beds</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-[#64748B]">
+                          <div className="flex items-center gap-1 truncate">
+                            <Phone className="w-3 h-3 text-[#2563EB] shrink-0" />
+                            <span className="truncate">Nodal Desk: {hospital.coordinatorPhone}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(hospital.coordinatorPhone);
+                              setCopiedPhoneId(hospital.id);
+                              setTimeout(() => setCopiedPhoneId(null), 2000);
+                            }}
+                            className="text-[10px] font-semibold text-[#2563EB] hover:text-[#1D4ED8] bg-white px-2 py-0.5 rounded border border-[#E2E8F0] shrink-0 flex items-center gap-1 cursor-pointer"
+                            title="Copy coordinator phone"
+                          >
+                            {copiedPhoneId === hospital.id ? (
+                              <>
+                                <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                <span className="text-emerald-700">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-2.5 h-2.5" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
 
-                      {/* Organ Services Supported */}
-                      <div className="space-y-1">
-                        <div className="text-[11px] font-semibold text-[#64748B]">
-                          Statutory Licensed Programs ({hospital.organsSupported.length}):
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {hospital.organsSupported.map((org) => {
-                            const sourceCitation = hospital.sources?.find((s) => s.organType === org);
-                            return (
-                              <span
-                                key={org}
-                                title={sourceCitation ? `${sourceCitation.sourceAuthority} (${sourceCitation.citationReference})` : 'Licensed under THOTA'}
-                                className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-white text-[#1D4ED8] border border-[#E2E8F0] flex items-center gap-1"
-                              >
-                                <span>{org.replace('_', ' ')}</span>
-                                {sourceCitation?.reviewStatus === 'verified' && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" title="Verified program citation" />
-                                )}
-                              </span>
-                            );
-                          })}
-                        </div>
+                      {/* Organ Services */}
+                      <div className="flex flex-wrap gap-1">
+                        {hospital.organsSupported.map((org) => (
+                          <span
+                            key={org}
+                            className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-white text-[#1D4ED8] border border-[#E2E8F0]"
+                          >
+                            {org.replace('_', ' ')}
+                          </span>
+                        ))}
                       </div>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-[#E2E8F0] flex items-center justify-between gap-2 flex-wrap">
+                    <div className="pt-3 mt-3 border-t border-[#E2E8F0] flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-3">
                         <a
                           href={hospital.sourceUrl}
@@ -471,14 +486,13 @@ export const DirectoryPage: React.FC = () => {
                             }
                           }}
                           className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] inline-flex items-center gap-1 cursor-pointer"
-                          title="Center and view marker on map"
                         >
                           <MapPin className="w-3 h-3" />
                           <span>Locate on Map</span>
                         </button>
                       </div>
                       <Link to={`/hospitals/${hospital.id}`}>
-                        <Button variant="primary" size="sm">
+                        <Button variant="primary" size="sm" className="text-xs py-1.5">
                           View Hospital Dossier →
                         </Button>
                       </Link>
@@ -513,9 +527,9 @@ export const DirectoryPage: React.FC = () => {
                     onClick={() => setCurrentPage(page)}
                     aria-label={`Page ${page}`}
                     aria-current={currentPage === page ? 'page' : undefined}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       currentPage === page
-                        ? 'bg-[#2563EB] text-white shadow-xs'
+                        ? 'bg-[#2563EB] text-white'
                         : 'text-[#64748B] hover:bg-[#F4F8FF] hover:text-[#0F172A]'
                     }`}
                   >

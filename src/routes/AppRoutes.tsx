@@ -12,6 +12,8 @@ import { RegisterPage } from '../pages/auth/RegisterPage';
 import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage';
 import { UnauthorizedPage } from '../pages/auth/UnauthorizedPage';
 import { VerifyEmailPage } from '../pages/auth/VerifyEmailPage';
+import { DonorDashboardPage } from '../pages/donor/DonorDashboardPage';
+import { DonorRegisterPage } from '../pages/donor/DonorRegisterPage';
 import { PatientDashboardPage } from '../pages/patient/PatientDashboardPage';
 import { AboutPage } from '../pages/public/AboutPage';
 import { ContactPage } from '../pages/public/ContactPage';
@@ -49,6 +51,17 @@ export const AppRoutes: React.FC = () => {
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
           <Route path="/auth/unauthorized" element={<UnauthorizedPage />} />
+
+          {/* Organ Donor Registration & Private Dashboard */}
+          <Route path="/donor/register" element={<DonorRegisterPage />} />
+          <Route
+            path="/donor"
+            element={
+              <ProtectedRoute allowedRoles={['donor', 'patient', 'family', 'admin']}>
+                <DonorDashboardPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Role Portals (Protected Routes) */}
           <Route

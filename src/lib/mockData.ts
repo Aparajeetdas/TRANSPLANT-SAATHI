@@ -1,4 +1,4 @@
-import { FinancialScheme, HospitalIntakeRecord, StatutoryDocumentRequirement, UserProfile, VerifiedHospital } from '../types';
+import { DonorMilestoneItem, DonorProfile, FinancialScheme, HospitalIntakeRecord, StatutoryDocumentRequirement, UserProfile, VerifiedHospital } from '../types';
 
 export const VERIFIED_HOSPITALS: VerifiedHospital[] = [
   {
@@ -567,6 +567,7 @@ export const SYNTHETIC_HOSPITAL_INTAKES: HospitalIntakeRecord[] = [
 export const DEMO_PROFILES: UserProfile[] = [
   {
     id: 'demo-patient',
+    publicId: 'TS-7K9P-X4QM',
     email: 'patient.sharma@example.com',
     fullName: 'Rajesh Sharma',
     phone: '+91-98765-43210',
@@ -576,6 +577,7 @@ export const DEMO_PROFILES: UserProfile[] = [
   },
   {
     id: 'demo-family',
+    publicId: 'TS-3B8R-N2WV',
     email: 'family.ananya@example.com',
     fullName: 'Ananya Sharma (Caregiver)',
     phone: '+91-98765-43211',
@@ -585,6 +587,7 @@ export const DEMO_PROFILES: UserProfile[] = [
   },
   {
     id: 'demo-volunteer',
+    publicId: 'TS-9M4L-H6TD',
     email: 'volunteer.arun@saathi-volunteer.org',
     fullName: 'Arun Varma',
     phone: '+91-98111-22334',
@@ -595,6 +598,7 @@ export const DEMO_PROFILES: UserProfile[] = [
   },
   {
     id: 'demo-hospital-staff',
+    publicId: 'TS-5J2C-K8FY',
     email: 'coordinator.aiims@hospital.gov.in',
     fullName: 'Dr. Priya Raman (Transplant Liaison)',
     phone: '+91-11-26588500',
@@ -605,6 +609,7 @@ export const DEMO_PROFILES: UserProfile[] = [
   },
   {
     id: 'demo-admin',
+    publicId: 'TS-1A0Z-E9QP',
     email: 'admin.director@transplantsaathi.org',
     fullName: 'Siddharth Sen (Platform Admin)',
     phone: '+91-11-40001000',
@@ -612,6 +617,16 @@ export const DEMO_PROFILES: UserProfile[] = [
     organization: 'Transplant Saathi Directorate',
     isActive: true,
     createdAt: '2026-01-01T00:00:00Z'
+  },
+  {
+    id: 'demo-donor',
+    publicId: 'TS-6P1X-9W2K',
+    email: 'donor.alok@example.com',
+    fullName: 'Alok Nath Verma',
+    phone: '+91-98100-11223',
+    role: 'donor',
+    isActive: true,
+    createdAt: '2026-02-10T11:00:00Z'
   }
 ];
 
@@ -656,6 +671,80 @@ export const VETTED_VOLUNTEERS: VettedVolunteer[] = [
     specialization: 'PM-JAY Scheme Paperwork & Manipal / Narayana Hospital Guidance',
     languages: ['Kannada', 'Hindi', 'English'],
     activeCases: 3
+  }
+];
+
+export const INITIAL_DONOR_PROFILES: DonorProfile[] = [
+  {
+    id: 'donor-prof-001',
+    userId: 'demo-donor',
+    publicDonorId: 'TS-DNR-4K8P-2Q9T',
+    pledgeStatus: 'pledged_interest',
+    pledgedOrgans: ['all'],
+    familyInformed: true,
+    emergencyContactName: 'Kavita Verma (Spouse)',
+    emergencyContactPhone: '+91-98100-55443',
+    officialNottoRegistrationNumber: 'NOTTO-PLEDGE-2026-99120',
+    state: 'Delhi',
+    city: 'New Delhi',
+    bloodGroup: 'B+',
+    consentSigned: true,
+    consentSignedAt: '2026-02-10T11:05:00Z',
+    isPublicPledgeAnonymous: true,
+    createdAt: '2026-02-10T11:00:00Z',
+    updatedAt: '2026-02-10T11:05:00Z'
+  },
+  {
+    id: 'donor-prof-002',
+    userId: 'demo-patient',
+    publicDonorId: 'TS-DNR-8W3J-7M5X',
+    pledgeStatus: 'notto_registered',
+    pledgedOrgans: ['cornea', 'tissues'],
+    familyInformed: true,
+    emergencyContactName: 'Ananya Sharma (Caregiver)',
+    emergencyContactPhone: '+91-98765-43211',
+    officialNottoRegistrationNumber: 'NOTTO-GOV-REG-77401',
+    state: 'Maharashtra',
+    city: 'Mumbai',
+    bloodGroup: 'O+',
+    consentSigned: true,
+    consentSignedAt: '2026-02-14T09:30:00Z',
+    isPublicPledgeAnonymous: true,
+    createdAt: '2026-02-14T09:30:00Z',
+    updatedAt: '2026-02-14T09:30:00Z'
+  }
+];
+
+export const DEFAULT_DONOR_MILESTONES: DonorMilestoneItem[] = [
+  {
+    id: 'step-1-pledge',
+    title: 'Record Voluntary Donation Intention',
+    description: 'Pledge interest on Transplant Saathi and generate your permanent anonymous Public Donor ID.',
+    isCompleted: true,
+    statutoryNotice: 'Pledging on Transplant Saathi creates a private voluntary intention record and public donor ID. It is not an organ match or sale.',
+    completedAt: '2026-02-10T11:00:00Z'
+  },
+  {
+    id: 'step-2-family',
+    title: 'Crucial: Inform Your Family & Next-of-Kin',
+    description: 'Under Indian law (THOTA 1994, Rule 11), deceased organ retrieval legally requires informed written consent from next-of-kin. Your family is your voice.',
+    isCompleted: false,
+    statutoryNotice: 'Section 3(3) THOTA 1994: Organ retrieval requires family authorization. Always have an open conversation with your legal next-of-kin.'
+  },
+  {
+    id: 'step-3-notto',
+    title: 'Register on National Registry (NOTTO Form 7)',
+    description: 'Complete official statutory registration on the Ministry of Health and Family Welfare National NOTTO Portal (Form 7).',
+    isCompleted: false,
+    statutoryNotice: 'Official statutory organ donor pledge under Transplantation of Human Organs and Tissues Rules, 2014.',
+    officialUrl: 'https://notto.mohfw.gov.in'
+  },
+  {
+    id: 'step-4-card',
+    title: 'Carry Your Digital Donor Card',
+    description: 'Save or print your official Transplant Saathi emergency donor card with your Public Donor ID and emergency contact info.',
+    isCompleted: false,
+    statutoryNotice: 'Keep your digital donor card in your wallet or smartphone for emergency identification by authorized trauma coordinators.'
   }
 ];
 

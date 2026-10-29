@@ -54,10 +54,10 @@ export const AboutPage: React.FC = () => {
       </div>
 
       {/* Non-Negotiable Boundaries */}
-      <section className="p-8 sm:p-10 rounded-3xl bg-[#0F172A] text-white border border-[#2563EB]/30 space-y-6">
-        <div className="space-y-2">
+      <section className="p-6 sm:p-8 rounded-xl bg-[#0F172A] text-white space-y-5">
+        <div className="space-y-1.5">
           <Badge variant="primary">Statutory Integrity</Badge>
-          <h2 className="text-2xl font-bold font-heading">
+          <h2 className="text-xl sm:text-2xl font-bold">
             What Transplant Saathi NEVER Does
           </h2>
           <p className="text-xs text-white/70">
@@ -65,22 +65,22 @@ export const AboutPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+          <div className="p-3.5 rounded-lg bg-white/5 border border-white/10 space-y-1">
             <h4 className="font-bold text-[#F4F8FF]">1. Never Allocates Organs</h4>
             <p className="text-white/60 text-[11px] leading-relaxed">
               Organ allocation is governed exclusively by statutory computerized waitlists managed by NOTTO, ROTTO, and SOTTO. No software or private entity can allocate organs.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+          <div className="p-3.5 rounded-lg bg-white/5 border border-white/10 space-y-1">
             <h4 className="font-bold text-[#F4F8FF]">2. Never Brokering or Matching</h4>
             <p className="text-white/60 text-[11px] leading-relaxed">
               Under Section 19 of THOTA 1994, buying, selling, or paid matching of organs carries up to 10 years rigorous imprisonment. We prohibit all commercial arrangements.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+          <div className="p-3.5 rounded-lg bg-white/5 border border-white/10 space-y-1">
             <h4 className="font-bold text-[#F4F8FF]">3. Never Makes Clinical Decisions</h4>
             <p className="text-white/60 text-[11px] leading-relaxed">
               Medical workup, donor crossmatching, and candidate eligibility belong exclusively to registered transplant specialists and hospital authorization committees.
@@ -90,33 +90,33 @@ export const AboutPage: React.FC = () => {
       </section>
 
       {/* Stakeholders & Collaboration */}
-      <section className="space-y-6">
+      <section className="space-y-4">
         <div>
-          <h2 className="text-2xl font-bold text-[#0F172A] font-heading">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
             Who We Serve
           </h2>
-          <p className="text-xs text-[#64748B]">
+          <p className="text-xs sm:text-sm text-[#64748B] mt-0.5">
             A unified ecosystem bringing transparency to patients, families, volunteers, and clinical desks.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-          <div className="p-4 rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/20 space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-1">
             <span className="font-bold text-[#0F172A]">Patients</span>
             <p className="text-[#64748B]">Clear milestone roadmaps, document checklists, and expense planning.</p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/20 space-y-1">
+          <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-1">
             <span className="font-bold text-[#0F172A]">Caregiver Families</span>
             <p className="text-[#64748B]">Step-by-step guidance through legal affidavits and welfare applications.</p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/20 space-y-1">
+          <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-1">
             <span className="font-bold text-[#0F172A]">Volunteer Saathis</span>
             <p className="text-[#64748B]">Trained peer supporters assisting with hospital wayfinding and translation.</p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#F4F8FF] border border-[#2563EB]/20 space-y-1">
+          <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-1">
             <span className="font-bold text-[#0F172A]">Hospital Desks</span>
             <p className="text-[#64748B]">Verified public directory listings, coordinator contacts, and compliance transparency.</p>
           </div>

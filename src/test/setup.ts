@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { beforeEach } from 'vitest';
 
 // Polyfill window.matchMedia for headless tests
 Object.defineProperty(window, 'matchMedia', {
@@ -14,3 +15,8 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+
+beforeEach(() => {
+  localStorage.clear();
+});
+

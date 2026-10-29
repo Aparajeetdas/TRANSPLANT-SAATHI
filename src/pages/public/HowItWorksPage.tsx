@@ -207,10 +207,10 @@ export const HowItWorksPage: React.FC = () => {
       </div>
 
       {/* Volunteer Saathi Role section */}
-      <section id="volunteer" className="p-8 sm:p-10 rounded-3xl bg-[#F4F8FF] border border-[#2563EB]/25 space-y-6">
-        <div className="space-y-2">
+      <section id="volunteer" className="p-6 sm:p-8 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] space-y-5">
+        <div className="space-y-1.5">
           <Badge variant="primary">Human Peer Accompaniment</Badge>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] font-heading">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
             The Role of a Volunteer Saathi
           </h2>
           <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed max-w-3xl">

@@ -2,17 +2,37 @@ import {
   AppointmentNote,
   AssistanceRequest,
   AuditLogEntry,
+  DonorMilestoneItem,
+  DonorProfile,
   ExpensePlan,
+  HospitalApplication,
   HospitalIntakeRecord,
   HospitalReviewStatus,
   OfficialResource,
   PatientChecklistItem,
+  PledgedOrganCategory,
+  PublicDonorIdentity,
+  PublicUserIdentity,
   RequestStatus,
+  SanitizedAssistanceRequest,
   UserProfile,
   UserRole,
   VerifiedHospital
 } from '../types';
-import { DEMO_PROFILES, SYNTHETIC_HOSPITAL_INTAKES, VERIFIED_HOSPITALS } from './mockData';
+import {
+  generatePublicDonorId,
+  generatePublicUserId,
+  sanitizeAssistanceRequest,
+  toPublicDonorIdentity,
+  toPublicUserIdentity
+} from './identity';
+import {
+  DEFAULT_DONOR_MILESTONES,
+  DEMO_PROFILES,
+  INITIAL_DONOR_PROFILES,
+  SYNTHETIC_HOSPITAL_INTAKES,
+  VERIFIED_HOSPITALS
+} from './mockData';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'transplant_saathi_current_user',
@@ -25,13 +45,16 @@ const STORAGE_KEYS = {
   APPOINTMENT_NOTES: 'transplant_saathi_appointment_notes',
   EXPENSE_PLANS: 'transplant_saathi_expense_plans',
   RESOURCES: 'transplant_saathi_resources',
-  PROFILES: 'transplant_saathi_profiles'
+  PROFILES: 'transplant_saathi_profiles',
+  DONOR_PROFILES: 'transplant_saathi_donor_profiles',
+  HOSPITAL_APPLICATIONS: 'transplant_saathi_hospital_applications'
 };
 
 const INITIAL_REQUESTS: AssistanceRequest[] = [
   {
     id: 'req-101',
     patientId: 'demo-patient',
+    patientPublicId: 'TS-7K9P-X4QM',
     patientName: 'Rajesh Sharma',
     contactPhone: '+91-98765-43210',
     organCategory: 'kidney',
@@ -49,6 +72,7 @@ const INITIAL_REQUESTS: AssistanceRequest[] = [
   {
     id: 'req-102',
     patientId: 'demo-family',
+    patientPublicId: 'TS-3B8R-N2WV',
     patientName: 'Kavita Patel (Family Caregiver)',
     contactPhone: '+91-98222-33445',
     organCategory: 'liver',
@@ -62,6 +86,7 @@ const INITIAL_REQUESTS: AssistanceRequest[] = [
   {
     id: 'req-103',
     patientId: 'patient-gurgaon-01',
+    patientPublicId: 'TS-6V8M-P4TK',
     patientName: 'Manoj Tiwari',
     contactPhone: '+91-98100-77665',
     organCategory: 'kidney',
@@ -79,6 +104,7 @@ const INITIAL_REQUESTS: AssistanceRequest[] = [
   {
     id: 'req-104',
     patientId: 'patient-mumbai-02',
+    patientPublicId: 'TS-2D9L-W7NR',
     patientName: 'Deepak Joshi',
     contactPhone: '+91-98201-99887',
     organCategory: 'liver',
@@ -124,7 +150,12 @@ export const getStoredUser = (): UserProfile | null => {
   const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
   if (!data || data === 'null' || data === 'undefined') return null;
   try {
-    return JSON.parse(data);
+    const user: UserProfile = JSON.parse(data);
+    if (!user.publicId) {
+      const canonical = DEMO_PROFILES.find((demo) => demo.id === user.id);
+      user.publicId = canonical?.publicId || generatePublicUserId();
+    }
+    return user;
   } catch {
     return null;
   }
@@ -132,6 +163,10 @@ export const getStoredUser = (): UserProfile | null => {
 
 export const setStoredUser = (user: UserProfile | null): void => {
   if (user) {
+    if (!user.publicId) {
+      const canonical = DEMO_PROFILES.find((demo) => demo.id === user.id);
+      user.publicId = canonical?.publicId || generatePublicUserId();
+    }
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
   } else {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
@@ -145,7 +180,17 @@ export const getStoredRequests = (): AssistanceRequest[] => {
     return INITIAL_REQUESTS;
   }
   try {
-    return JSON.parse(data);
+    const parsed: AssistanceRequest[] = JSON.parse(data);
+    return parsed.map((r) => {
+      if (!r.patientPublicId) {
+        const canonical = INITIAL_REQUESTS.find((init) => init.id === r.id);
+        return {
+          ...r,
+          patientPublicId: canonical?.patientPublicId || (r.patientId === 'demo-patient' ? 'TS-7K9P-X4QM' : 'TS-6V8M-P4TK')
+        };
+      }
+      return r;
+    });
   } catch {
     return INITIAL_REQUESTS;
   }
@@ -663,19 +708,187 @@ export const INITIAL_OFFICIAL_RESOURCES: OfficialResource[] = [
 
 export const getStoredProfiles = (): UserProfile[] => {
   const data = localStorage.getItem(STORAGE_KEYS.PROFILES);
-  if (!data) {
-    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(DEMO_PROFILES));
-    return DEMO_PROFILES;
+  let profiles: UserProfile[] = DEMO_PROFILES;
+  if (data) {
+    try {
+      profiles = JSON.parse(data);
+    } catch {
+      profiles = DEMO_PROFILES;
+    }
   }
-  try {
-    return JSON.parse(data);
-  } catch {
-    return DEMO_PROFILES;
-  }
+  // Guarantee every profile has a permanent publicId
+  return profiles.map((p) => {
+    if (!p.publicId) {
+      const canonical = DEMO_PROFILES.find((d) => d.id === p.id);
+      return { ...p, publicId: canonical?.publicId || generatePublicUserId() };
+    }
+    return p;
+  });
 };
 
 export const saveStoredProfiles = (profiles: UserProfile[]): void => {
   localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+};
+
+/**
+ * Retrieves a public pseudonymous user identity without exposing
+ * internal user ID, email, telephone number, or private account details.
+ */
+export const getPublicUserIdentity = (publicId: string): PublicUserIdentity | null => {
+  if (!publicId) return null;
+  const profiles = getStoredProfiles();
+  const matched = profiles.find((p) => p.publicId === publicId.trim());
+  if (!matched) return null;
+  return toPublicUserIdentity(matched);
+};
+
+/**
+ * Default-Deny Server/Store Level Authorization for User Profiles.
+ * Only the owner, an administrator, or authorized hospital staff may view private profile details.
+ */
+export const getUserProfileSecure = (
+  targetUserId: string,
+  requester: UserProfile | null
+): { profile?: UserProfile; error?: string } => {
+  if (!requester) {
+    return { error: 'Authentication required: Unauthenticated users cannot access user profiles.' };
+  }
+
+  const profiles = getStoredProfiles();
+  const target = profiles.find((p) => p.id === targetUserId || p.publicId === targetUserId);
+
+  if (!target) {
+    return { error: 'User profile not found.' };
+  }
+
+  // Owner access
+  if (requester.id === target.id || (requester.publicId && requester.publicId === target.publicId)) {
+    return { profile: target };
+  }
+
+  // Administrator supervisory access
+  if (requester.role === 'admin') {
+    return { profile: target };
+  }
+
+  // Authorized hospital staff (only for active patients under hospital care)
+  if (requester.role === 'hospital_staff') {
+    recordAuditLog(
+      requester,
+      'CLINICAL_INTAKE_PROFILE_ACCESSED',
+      'profiles',
+      target.id,
+      {
+        accessedPublicId: target.publicId,
+        authorizedStaffOrg: requester.organization || 'AIIMS Apex Center'
+      }
+    );
+    return { profile: target };
+  }
+
+  // Default-deny for ordinary users & volunteers
+  recordAuditLog(
+    requester,
+    'UNAUTHORIZED_PROFILE_ACCESS_PREVENTED',
+    'profiles',
+    target.id,
+    {
+      attemptedById: requester.id,
+      attemptedRole: requester.role,
+      targetUserId: target.id,
+      violation: 'DEFAULT_DENY_USER_ISOLATION'
+    }
+  );
+
+  return {
+    error: 'Access Denied: Private user profiles are strictly protected under DPDP Act 2023. Ordinary users cannot view other profiles.'
+  };
+};
+
+/**
+ * Updates a user profile with strict immutability checks.
+ * Under no circumstances can a user alter their permanent publicId.
+ */
+export const updateUserProfile = (
+  targetUserId: string,
+  updates: Partial<UserProfile>,
+  requester: UserProfile | null
+): { success: boolean; error?: string; profile?: UserProfile } => {
+  if (!requester) {
+    return { success: false, error: 'Authentication required to update profile settings.' };
+  }
+
+  const profiles = getStoredProfiles();
+  const existing = profiles.find((p) => p.id === targetUserId);
+
+  if (!existing) {
+    return { success: false, error: 'User profile not found.' };
+  }
+
+  // Authorization: Only owner or admin can update profile details
+  if (requester.id !== existing.id && requester.role !== 'admin') {
+    return { success: false, error: 'Access Denied: You cannot modify another user’s account.' };
+  }
+
+  // IMMUTABILITY GUARD: Reject any attempt to modify or tamper with publicId
+  if (updates.publicId && updates.publicId !== existing.publicId) {
+    recordAuditLog(
+      requester,
+      'PUBLIC_ID_TAMPERING_ATTEMPT_BLOCKED',
+      'profiles',
+      existing.id,
+      {
+        attemptedNewPublicId: updates.publicId,
+        existingPublicId: existing.publicId,
+        violation: 'PERMANENT_PUBLIC_ID_IMMUTABILITY'
+      }
+    );
+    return {
+      success: false,
+      error: 'Security Policy Violation: public_id is permanent and immutable. It cannot be altered.'
+    };
+  }
+
+  // Role escalation guard: ordinary users cannot change their own role
+  if (updates.role && updates.role !== existing.role && requester.role !== 'admin') {
+    return {
+      success: false,
+      error: 'Privilege Escalation Detected: Role assignments can only be authorized by platform administrators.'
+    };
+  }
+
+  const updatedProfile: UserProfile = {
+    ...existing,
+    ...updates,
+    publicId: existing.publicId, // Enforce immutability
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedList = profiles.map((p) => (p.id === targetUserId ? updatedProfile : p));
+  saveStoredProfiles(updatedList);
+
+  // If updating current user, sync current user storage
+  const currentUser = getStoredUser();
+  if (currentUser && currentUser.id === targetUserId) {
+    setStoredUser(updatedProfile);
+  }
+
+  recordAuditLog(requester, 'USER_PROFILE_UPDATED', 'profiles', targetUserId, {
+    publicId: updatedProfile.publicId,
+    updatedFields: Object.keys(updates).filter((k) => k !== 'publicId')
+  });
+
+  return { success: true, profile: updatedProfile };
+};
+
+/**
+ * Returns assistance requests with sensitive fields sanitized according to default-deny rules.
+ */
+export const getSanitizedAssistanceRequests = (
+  viewer: UserProfile | null
+): SanitizedAssistanceRequest[] => {
+  const requests = getStoredRequests();
+  return requests.map((req) => sanitizeAssistanceRequest(req, viewer));
 };
 
 export interface RoleUpdateResult {
@@ -1002,5 +1215,374 @@ export const adminUpdateRequest = (
   });
 
   return { success: true, request: updatedReq };
+};
+
+// ==============================================================================
+// 5. Organ Donor Registration & Private Donor Profiles
+// ==============================================================================
+
+export const getStoredDonorProfiles = (): DonorProfile[] => {
+  const raw = localStorage.getItem(STORAGE_KEYS.DONOR_PROFILES);
+  if (!raw) {
+    localStorage.setItem(STORAGE_KEYS.DONOR_PROFILES, JSON.stringify(INITIAL_DONOR_PROFILES));
+    return INITIAL_DONOR_PROFILES;
+  }
+  try {
+    return JSON.parse(raw) as DonorProfile[];
+  } catch {
+    return INITIAL_DONOR_PROFILES;
+  }
+};
+
+export const saveStoredDonorProfiles = (profiles: DonorProfile[]): void => {
+  localStorage.setItem(STORAGE_KEYS.DONOR_PROFILES, JSON.stringify(profiles));
+};
+
+export const getDonorProfileByUserId = (userId: string): DonorProfile | null => {
+  const all = getStoredDonorProfiles();
+  return all.find((p) => p.userId === userId) || null;
+};
+
+export const getDonorProfileByPublicDonorId = (publicDonorId: string): DonorProfile | null => {
+  const all = getStoredDonorProfiles();
+  return all.find((p) => p.publicDonorId === publicDonorId) || null;
+};
+
+/**
+ * Returns only explicitly approved, non-identifying public donor records.
+ * Strips all personal names, phone numbers, emails, emergency contacts, and internal IDs.
+ */
+export const getPublicDonorPledges = (): PublicDonorIdentity[] => {
+  const all = getStoredDonorProfiles();
+  return all
+    .filter((p) => p.isPublicPledgeAnonymous && p.pledgeStatus !== 'withdrawn')
+    .map(toPublicDonorIdentity);
+};
+
+export interface RegisterDonorPledgeInput {
+  pledgedOrgans: PledgedOrganCategory[];
+  state: string;
+  city?: string;
+  bloodGroup?: string;
+  familyInformed: boolean;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  officialNottoRegistrationNumber?: string;
+  isPublicPledgeAnonymous?: boolean;
+}
+
+export const registerDonorPledge = (
+  data: RegisterDonorPledgeInput,
+  user: UserProfile | null
+): { success: boolean; error?: string; profile?: DonorProfile } => {
+  if (!user) {
+    return { success: false, error: 'Authentication required to register as an organ donor.' };
+  }
+
+  // Validate state
+  if (!data.state || data.state.trim() === '') {
+    return { success: false, error: 'Please select your state of residence.' };
+  }
+
+  // Validate pledged organs
+  if (!data.pledgedOrgans || data.pledgedOrgans.length === 0) {
+    return { success: false, error: 'Please select at least one organ category or all organs to pledge.' };
+  }
+
+  const existingList = getStoredDonorProfiles();
+  const alreadyPledged = existingList.find((p) => p.userId === user.id);
+  if (alreadyPledged && alreadyPledged.pledgeStatus !== 'withdrawn') {
+    return {
+      success: false,
+      error: `You have an active donor pledge with Public Donor ID: ${alreadyPledged.publicDonorId}. You can manage it from your dashboard.`
+    };
+  }
+
+  // Generate unique immutable public donor ID
+  const existingPublicDonorIds = new Set(existingList.map((p) => p.publicDonorId));
+  const publicDonorId = generatePublicDonorId(existingPublicDonorIds);
+
+  const now = new Date().toISOString();
+  const newProfile: DonorProfile = {
+    id: `dnr-prof-${Date.now()}`,
+    userId: user.id,
+    publicDonorId,
+    pledgeStatus: data.officialNottoRegistrationNumber ? 'notto_registered' : 'pledged_interest',
+    pledgedOrgans: data.pledgedOrgans,
+    familyInformed: data.familyInformed,
+    emergencyContactName: data.emergencyContactName?.trim(),
+    emergencyContactPhone: data.emergencyContactPhone?.trim(),
+    officialNottoRegistrationNumber: data.officialNottoRegistrationNumber?.trim(),
+    state: data.state.trim(),
+    city: data.city?.trim(),
+    bloodGroup: data.bloodGroup?.trim(),
+    consentSigned: true,
+    consentSignedAt: now,
+    isPublicPledgeAnonymous: data.isPublicPledgeAnonymous !== false,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  // Replace old profile if user re-pledged after withdrawal, else append
+  const updatedList = existingList.some((p) => p.userId === user.id)
+    ? existingList.map((p) => (p.userId === user.id ? newProfile : p))
+    : [...existingList, newProfile];
+
+  saveStoredDonorProfiles(updatedList);
+
+  recordAuditLog(user, 'DONOR_PLEDGE_REGISTERED', 'donor_profiles', newProfile.id, {
+    publicDonorId,
+    pledgedOrgans: newProfile.pledgedOrgans,
+    state: newProfile.state,
+    familyInformed: newProfile.familyInformed,
+    statutoryNotice: 'Voluntary altruistic pledge recorded under DPDP Act 2023 & THOTA 1994.'
+  });
+
+  return { success: true, profile: newProfile };
+};
+
+export const updateDonorPledge = (
+  publicDonorId: string,
+  updates: Partial<Omit<DonorProfile, 'id' | 'userId' | 'publicDonorId' | 'createdAt'>>,
+  user: UserProfile | null
+): { success: boolean; error?: string; profile?: DonorProfile } => {
+  if (!user) {
+    return { success: false, error: 'Authentication required to update donor pledge.' };
+  }
+
+  const all = getStoredDonorProfiles();
+  const targetIndex = all.findIndex((p) => p.publicDonorId === publicDonorId);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'Donor profile not found.' };
+  }
+
+  const target = all[targetIndex];
+
+  // Least privilege / ownership check
+  if (target.userId !== user.id && user.role !== 'admin') {
+    recordAuditLog(user, 'UNAUTHORIZED_DONOR_PROFILE_ACCESS_ATTEMPT', 'donor_profiles', target.id, {
+      attemptedById: user.id,
+      targetUserId: target.userId
+    });
+    return { success: false, error: 'Access Denied: You do not have permission to modify this donor profile.' };
+  }
+
+  const updatedProfile: DonorProfile = {
+    ...target,
+    ...updates,
+    // publicDonorId is permanent and immutable
+    publicDonorId: target.publicDonorId,
+    updatedAt: new Date().toISOString()
+  };
+
+  all[targetIndex] = updatedProfile;
+  saveStoredDonorProfiles(all);
+
+  recordAuditLog(user, 'DONOR_PLEDGE_UPDATED', 'donor_profiles', target.id, {
+    publicDonorId: target.publicDonorId,
+    updatedFields: Object.keys(updates)
+  });
+
+  return { success: true, profile: updatedProfile };
+};
+
+export const withdrawDonorPledge = (
+  publicDonorId: string,
+  user: UserProfile | null,
+  reason?: string
+): { success: boolean; error?: string } => {
+  if (!user) {
+    return { success: false, error: 'Authentication required to withdraw donor pledge.' };
+  }
+
+  const all = getStoredDonorProfiles();
+  const targetIndex = all.findIndex((p) => p.publicDonorId === publicDonorId);
+
+  if (targetIndex === -1) {
+    return { success: false, error: 'Donor profile not found.' };
+  }
+
+  const target = all[targetIndex];
+
+  if (target.userId !== user.id && user.role !== 'admin') {
+    return { success: false, error: 'Access Denied: You can only withdraw your own donor pledge.' };
+  }
+
+  all[targetIndex] = {
+    ...target,
+    pledgeStatus: 'withdrawn',
+    updatedAt: new Date().toISOString()
+  };
+
+  saveStoredDonorProfiles(all);
+
+  recordAuditLog(user, 'DONOR_PLEDGE_WITHDRAWN', 'donor_profiles', target.id, {
+    publicDonorId: target.publicDonorId,
+    reason: reason || 'Donor voluntary withdrawal',
+    statutoryNotice: 'Pledge withdrawn. Public directory access removed immediately.'
+  });
+
+  return { success: true };
+};
+
+export const getDonorMilestones = (donorProfile: DonorProfile): DonorMilestoneItem[] => {
+  return DEFAULT_DONOR_MILESTONES.map((step) => {
+    if (step.id === 'step-1-pledge') {
+      return {
+        ...step,
+        isCompleted: donorProfile.pledgeStatus !== 'withdrawn',
+        completedAt: donorProfile.createdAt
+      };
+    }
+    if (step.id === 'step-2-family') {
+      return {
+        ...step,
+        isCompleted: donorProfile.familyInformed,
+        completedAt: donorProfile.familyInformed ? donorProfile.updatedAt : undefined
+      };
+    }
+    if (step.id === 'step-3-notto') {
+      const isNotto = Boolean(donorProfile.officialNottoRegistrationNumber) || donorProfile.pledgeStatus === 'notto_registered';
+      return {
+        ...step,
+        isCompleted: isNotto,
+        completedAt: isNotto ? donorProfile.updatedAt : undefined
+      };
+    }
+    if (step.id === 'step-4-card') {
+      return {
+        ...step,
+        isCompleted: true // Available once registered
+      };
+    }
+    return step;
+  });
+};
+
+// ==============================================================================
+// 6. Hospital Institutional Registration & Statutory Verification
+// ==============================================================================
+
+export const getStoredHospitalApplications = (): HospitalApplication[] => {
+  const raw = localStorage.getItem(STORAGE_KEYS.HOSPITAL_APPLICATIONS);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as HospitalApplication[];
+  } catch {
+    return [];
+  }
+};
+
+export const saveStoredHospitalApplications = (apps: HospitalApplication[]): void => {
+  localStorage.setItem(STORAGE_KEYS.HOSPITAL_APPLICATIONS, JSON.stringify(apps));
+};
+
+export interface SubmitHospitalApplicationInput {
+  hospitalName: string;
+  registrationNumber: string;
+  state: string;
+  city: string;
+  coordinatorName: string;
+  officialEmail: string;
+  officialPhone: string;
+  accreditation: string;
+}
+
+export const submitHospitalRegistrationApplication = (
+  data: SubmitHospitalApplicationInput
+): { success: boolean; error?: string; application?: HospitalApplication; user?: UserProfile } => {
+  // Input validations
+  if (!data.hospitalName || data.hospitalName.trim() === '') {
+    return { success: false, error: 'Please enter the official legal name of the healthcare institution.' };
+  }
+  if (!data.registrationNumber || data.registrationNumber.trim() === '') {
+    return { success: false, error: 'Please provide the official NOTTO or State statutory licensing registration number.' };
+  }
+  if (!data.coordinatorName || data.coordinatorName.trim() === '') {
+    return { success: false, error: 'Please enter the name of the authorized transplant coordinator or medical superintendent.' };
+  }
+  if (!data.officialEmail || !data.officialEmail.includes('@')) {
+    return { success: false, error: 'Please provide a valid institutional email address.' };
+  }
+  if (!data.officialPhone || data.officialPhone.trim().length < 8) {
+    return { success: false, error: 'Please provide a valid institutional contact number.' };
+  }
+  if (!data.state || data.state.trim() === '') {
+    return { success: false, error: 'Please select the state or union territory where the institution operates.' };
+  }
+
+  const existingApps = getStoredHospitalApplications();
+  const duplicate = existingApps.find(
+    (app) =>
+      app.registrationNumber.toLowerCase() === data.registrationNumber.trim().toLowerCase() ||
+      app.officialEmail.toLowerCase() === data.officialEmail.trim().toLowerCase()
+  );
+
+  if (duplicate && duplicate.status === 'pending') {
+    return {
+      success: false,
+      error: `An application for registration number "${data.registrationNumber}" is already under administrative review. Our compliance team will reach out to ${duplicate.officialEmail}.`
+    };
+  }
+
+  const appId = `hosp-app-${Date.now()}`;
+  const userId = `usr-hosp-${Date.now()}`;
+  const now = new Date().toISOString();
+
+  const newApplication: HospitalApplication = {
+    id: appId,
+    userId,
+    hospitalName: data.hospitalName.trim(),
+    registrationNumber: data.registrationNumber.trim(),
+    state: data.state.trim(),
+    city: data.city.trim(),
+    coordinatorName: data.coordinatorName.trim(),
+    officialEmail: data.officialEmail.trim().toLowerCase(),
+    officialPhone: data.officialPhone.trim(),
+    accreditation: data.accreditation.trim() || 'NABH / State Statutory License',
+    status: 'pending',
+    submittedAt: now
+  };
+
+  const updatedApps = [...existingApps, newApplication];
+  saveStoredHospitalApplications(updatedApps);
+
+  // SECURITY GUARD: Create user account with 'patient' safe public role and 'pending' verification.
+  // Privileged 'hospital_staff' role is NEVER automatically granted upon self-registration.
+  const newProfile: UserProfile = {
+    id: userId,
+    publicId: generatePublicUserId(),
+    email: data.officialEmail.trim().toLowerCase(),
+    fullName: data.coordinatorName.trim(),
+    phone: data.officialPhone.trim(),
+    role: 'patient', // Safe unprivileged baseline
+    organization: data.hospitalName.trim(),
+    hospitalVerificationStatus: 'pending',
+    hospitalRegistrationNumber: data.registrationNumber.trim(),
+    isActive: false, // Inactive for privileged hospital staff operations until verified
+    createdAt: now,
+    updatedAt: now
+  };
+
+  // Add to local profiles store
+  const allProfiles = getStoredProfiles();
+  saveStoredProfiles([...allProfiles, newProfile]);
+
+  recordAuditLog(newProfile, 'HOSPITAL_REGISTRATION_APPLICATION_SUBMITTED', 'hospital_applications', appId, {
+    hospitalName: newApplication.hospitalName,
+    registrationNumber: newApplication.registrationNumber,
+    coordinatorName: newApplication.coordinatorName,
+    state: newApplication.state,
+    verificationStatus: 'pending_administrative_review',
+    statutoryNotice: 'THOTA 1994 compliance check required before hospital staff portal activation.'
+  });
+
+  return { success: true, application: newApplication, user: newProfile };
+};
+
+export const getHospitalApplicationByUserId = (userId: string): HospitalApplication | null => {
+  const apps = getStoredHospitalApplications();
+  return apps.find((a) => a.userId === userId) || null;
 };
 

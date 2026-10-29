@@ -10,6 +10,7 @@ import {
   Scale,
   ShieldCheck,
   UserCheck,
+  UserPlus,
   X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -26,11 +27,9 @@ export const PublicLayout: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const [moreNavOpen, setMoreNavOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   const roleDropdownRef = useRef<HTMLDivElement>(null);
-  const moreNavRef = useRef<HTMLDivElement>(null);
 
   // Click outside and escape key handling for accessibility
   useEffect(() => {
@@ -39,15 +38,11 @@ export const PublicLayout: React.FC = () => {
       if (roleDropdownRef.current && !roleDropdownRef.current.contains(target)) {
         setRoleDropdownOpen(false);
       }
-      if (moreNavRef.current && !moreNavRef.current.contains(target)) {
-        setMoreNavOpen(false);
-      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setRoleDropdownOpen(false);
-        setMoreNavOpen(false);
         setMobileMenuOpen(false);
       }
     };
@@ -60,7 +55,7 @@ export const PublicLayout: React.FC = () => {
     };
   }, []);
 
-  // Primary 5 center navigation links
+  // Primary center navigation links
   const centerNavLinks = [
     { to: '/', label: 'Home' },
     { to: '/directory', label: 'Hospital Directory' },
@@ -76,6 +71,7 @@ export const PublicLayout: React.FC = () => {
     if (newRole === 'volunteer') navigate('/volunteer');
     else if (newRole === 'hospital_staff') navigate('/hospital');
     else if (newRole === 'admin') navigate('/admin');
+    else if (newRole === 'donor') navigate('/donor');
     else navigate('/patient');
   };
 
@@ -86,6 +82,8 @@ export const PublicLayout: React.FC = () => {
       ? '/hospital'
       : role === 'admin'
       ? '/admin'
+      : role === 'donor'
+      ? '/donor'
       : '/patient';
 
   const workspaceLabel =
@@ -95,6 +93,8 @@ export const PublicLayout: React.FC = () => {
       ? 'Staff Portal'
       : role === 'admin'
       ? 'Admin Console'
+      : role === 'donor'
+      ? 'Donor Dashboard'
       : 'My Workspace';
 
   const getUserInitials = (name?: string): string => {
@@ -135,43 +135,43 @@ export const PublicLayout: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Redesigned Main Navigation Bar (80px height, clean blue & white) */}
+      {/* 2. Redesigned Minimal Navigation Bar (compact 64px height, clean blue & white) */}
       <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20 gap-4">
-            {/* Left section: Logo & Brand */}
+          <div className="flex items-center justify-between h-16 gap-4">
+            {/* Left section: Small logo & brand */}
             <Link
               to="/"
-              className="flex items-center gap-3 select-none group shrink-0"
+              className="flex items-center gap-2.5 select-none group shrink-0"
               aria-label="Transplant Saathi Home"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#2563EB] flex items-center justify-center text-white shadow-xs group-hover:bg-[#1D4ED8] transition-colors shrink-0">
-                <Compass className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-[#2563EB] flex items-center justify-center text-white shadow-2xs group-hover:bg-[#1D4ED8] transition-colors shrink-0">
+                <Compass className="w-4 h-4" />
               </div>
               <div className="flex flex-col text-left">
-                <span className="text-lg font-bold text-[#0F172A] tracking-tight font-heading leading-tight group-hover:text-[#2563EB] transition-colors">
+                <span className="text-base font-bold text-[#0F172A] tracking-tight font-heading leading-tight group-hover:text-[#2563EB] transition-colors">
                   Transplant Saathi
                 </span>
-                <span className="text-[11px] font-medium text-[#64748B] hidden sm:block leading-tight">
+                <span className="text-[11px] font-medium text-[#64748B] hidden lg:block leading-none mt-0.5">
                   Compassionate Healthcare Navigation
                 </span>
               </div>
             </Link>
 
-            {/* Center section: Evenly spaced navigation links (Desktop full >= 1280px) */}
+            {/* Center section: 5 evenly spaced, vertically aligned navigation links */}
             <nav
               aria-label="Primary Navigation"
-              className="hidden xl:flex items-center justify-center gap-1"
+              className="hidden lg:flex items-center justify-center gap-1 xl:gap-2"
             >
               {centerNavLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
                   className={({ isActive }) =>
-                    `px-3 py-2 rounded-lg text-[13px] font-semibold transition-all whitespace-nowrap ${
+                    `h-8 px-3 rounded-lg text-xs font-semibold flex items-center transition-all whitespace-nowrap ${
                       isActive
-                        ? 'text-[#2563EB] bg-[#F4F8FF] font-bold border border-[#2563EB]/20 shadow-2xs'
-                        : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF]/60'
+                        ? 'text-[#2563EB] bg-[#F4F8FF] border border-[#2563EB]/25 shadow-2xs'
+                        : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF]'
                     }`
                   }
                 >
@@ -180,205 +180,161 @@ export const PublicLayout: React.FC = () => {
               ))}
             </nav>
 
-            {/* Center section for 1024px-1279px (Tablet landscape: 3 core links + More menu) */}
-            <nav
-              aria-label="Tablet Navigation"
-              className="hidden lg:flex xl:hidden items-center gap-1"
-            >
-              {centerNavLinks.slice(0, 3).map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                      isActive
-                        ? 'text-[#2563EB] bg-[#F4F8FF] font-bold border border-[#2563EB]/20'
-                        : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF]/60'
-                    }`
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
-              <div className="relative" ref={moreNavRef}>
-                <button
-                  type="button"
-                  onClick={() => setMoreNavOpen(!moreNavOpen)}
-                  aria-expanded={moreNavOpen}
-                  aria-haspopup="true"
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF]/60 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>More</span>
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {moreNavOpen && (
-                  <div className="absolute left-0 mt-1.5 w-44 rounded-xl bg-white shadow-lg border border-[#E2E8F0] py-1.5 z-50 text-left">
-                    {centerNavLinks.slice(3).map((link) => (
-                      <NavLink
-                        key={link.to}
-                        to={link.to}
-                        onClick={() => setMoreNavOpen(false)}
-                        className={({ isActive }) =>
-                          `block px-3 py-2 text-xs font-medium ${
-                            isActive
-                              ? 'text-[#2563EB] bg-[#F4F8FF] font-bold'
-                              : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF]/60'
-                          }`
-                        }
-                      >
-                        {link.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </nav>
-
-            {/* Right section: Organized account & primary actions */}
-            <div className="hidden lg:flex items-center gap-2.5 shrink-0">
-              {/* Primary action: Contact & Help */}
+            {/* Right section: Exactly 2 action buttons + compact profile dropdown */}
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              {/* One primary action: Contact & Help */}
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2563EB] text-white hover:bg-[#1D4ED8] shadow-2xs transition-colors shrink-0"
+                className="h-8 px-3 rounded-lg text-xs font-semibold bg-[#2563EB] text-white hover:bg-[#1D4ED8] shadow-2xs inline-flex items-center gap-1.5 transition-colors shrink-0"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
                 <span>Contact & Help</span>
               </Link>
 
-              {/* Secondary action: Request Saathi */}
+              {/* One secondary action: Request Saathi */}
               <button
                 type="button"
                 onClick={() => setIsSupportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#1D4ED8] bg-[#F4F8FF] hover:bg-[#2563EB]/15 border border-[#2563EB]/25 transition-colors shrink-0 cursor-pointer"
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-[#1D4ED8] bg-[#F4F8FF] hover:bg-[#2563EB]/15 border border-[#2563EB]/25 inline-flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
               >
                 <HeartHandshake className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>Request Saathi</span>
               </button>
 
-              {/* Workspace Action: My Workspace */}
-              {currentUser && (
-                <Link
-                  to={workspacePath}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#0F172A] bg-white hover:bg-[#F4F8FF] border border-[#E2E8F0] hover:border-[#2563EB]/40 transition-colors shrink-0"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>{workspaceLabel}</span>
-                </Link>
-              )}
-
-              {/* Compact Patient Role Indicator & Switcher */}
-              <div className="relative" ref={roleDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                  aria-expanded={roleDropdownOpen}
-                  aria-haspopup="true"
-                  aria-label="Simulate Persona / Role Switcher"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2563EB]/40 hover:bg-[#F4F8FF] text-xs font-medium text-[#0F172A] transition-colors cursor-pointer"
-                  title="Simulate Persona / Role Switcher"
-                >
-                  <UserCheck className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span className="capitalize font-semibold text-[11px] text-[#1D4ED8]">{role.replace('_', ' ')}</span>
-                  <ChevronDown className="w-3 h-3 text-[#64748B]" />
-                </button>
-
-                {roleDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-[#E2E8F0] py-2 z-50 text-left">
-                    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0]">
-                      Switch Test Role (RBAC Simulation)
-                    </div>
-                    {(['patient', 'volunteer', 'hospital_staff', 'admin'] as UserRole[]).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => handleRoleChange(r)}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-[#F4F8FF] transition-colors cursor-pointer ${
-                          role === r ? 'font-bold text-[#2563EB] bg-[#F4F8FF]/80' : 'text-[#0F172A]'
-                        }`}
-                      >
-                        <span className="capitalize">{r.replace('_', ' ')}</span>
-                        {role === r && <Badge variant="primary" size="sm">Active</Badge>}
-                      </button>
-                    ))}
-                    <div className="border-t border-[#E2E8F0] mt-1 pt-1 px-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          logout();
-                          setRoleDropdownOpen(false);
-                          navigate('/');
-                        }}
-                        className="text-[11px] text-[#64748B] hover:text-[#0F172A] py-1 block w-full text-left cursor-pointer"
-                      >
-                        Log out (Browse as Anonymous)
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Compact User Profile Menu */}
+              {/* Compact user profile dropdown containing role, portal access, and logout */}
               {currentUser ? (
-                <div className="flex items-center gap-2 pl-2 border-l border-[#E2E8F0]">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-7 h-7 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                      {getUserInitials(displayName)}
-                    </div>
-                    <div className="hidden 2xl:flex flex-col text-left leading-none">
-                      <span className="text-xs font-semibold text-[#0F172A] truncate max-w-[110px]">
-                        {displayName}
-                      </span>
-                      <span className="text-[10px] text-[#64748B] capitalize">
-                        {displayRole}
-                      </span>
-                    </div>
-                  </div>
+                <div className="relative pl-1 border-l border-[#E2E8F0]" ref={roleDropdownRef}>
                   <button
                     type="button"
-                    onClick={async () => {
-                      await logout();
-                      navigate('/auth/login');
-                    }}
-                    title="Log Out"
-                    aria-label="Sign out of account"
-                    className="p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F8FF] cursor-pointer transition-colors"
+                    onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                    aria-expanded={roleDropdownOpen}
+                    aria-haspopup="true"
+                    aria-label="User Profile & Role Switcher"
+                    title="Simulate Persona / Role Switcher"
+                    className="h-8 pl-1.5 pr-2.5 rounded-lg border border-[#E2E8F0] hover:border-[#2563EB]/40 hover:bg-[#F4F8FF] inline-flex items-center gap-2 cursor-pointer transition-colors"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <div className="w-5.5 h-5.5 rounded-full bg-[#2563EB] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                      {getUserInitials(displayName)}
+                    </div>
+                    <span className="text-xs font-semibold text-[#0F172A] max-w-[95px] truncate">
+                      {displayName}
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#1D4ED8] bg-[#F4F8FF] px-1.5 py-0.5 rounded border border-[#2563EB]/20 uppercase">
+                      {displayRole}
+                    </span>
+                    <ChevronDown className="w-3 h-3 text-[#64748B]" />
                   </button>
+
+                  {roleDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-white shadow-xl border border-[#E2E8F0] p-2 z-50 text-left space-y-2">
+                      {/* User identity summary */}
+                      <div className="px-2.5 py-2 rounded-lg bg-[#F4F8FF] border border-[#2563EB]/20">
+                        <div className="font-bold text-xs text-[#0F172A] truncate">{displayName}</div>
+                        <div className="flex items-center justify-between text-[11px] text-[#64748B] mt-0.5 font-mono">
+                          <span>{currentUser.publicId || 'TS-7K9P-X4QM'}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-white text-[#1D4ED8] font-bold capitalize border border-[#2563EB]/25 font-sans">
+                            {displayRole}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Portal Access */}
+                      <div>
+                        <Link
+                          to={workspacePath}
+                          onClick={() => setRoleDropdownOpen(false)}
+                          className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-[#0F172A] hover:bg-[#F4F8FF] hover:text-[#2563EB] transition-colors"
+                        >
+                          <LayoutDashboard className="w-4 h-4 text-[#2563EB]" />
+                          <span>{workspaceLabel}</span>
+                        </Link>
+                      </div>
+
+                      {/* Simulation Role Switcher (RBAC Demo) */}
+                      <div className="border-t border-[#E2E8F0] pt-1.5">
+                        <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
+                          Switch Test Role (RBAC Simulation)
+                        </div>
+                        <div className="space-y-0.5">
+                          {(['patient', 'donor', 'volunteer', 'hospital_staff', 'admin'] as UserRole[]).map((r) => (
+                            <button
+                              key={r}
+                              type="button"
+                              onClick={() => handleRoleChange(r)}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                role === r
+                                  ? 'font-bold text-[#2563EB] bg-[#F4F8FF]'
+                                  : 'text-[#0F172A] hover:bg-[#F4F8FF]/60'
+                              }`}
+                            >
+                              <span className="capitalize">{r.replace('_', ' ')}</span>
+                              {role === r && <Badge variant="primary" size="sm">Active</Badge>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sign Out */}
+                      <div className="border-t border-[#E2E8F0] pt-1">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await logout();
+                            setRoleDropdownOpen(false);
+                            navigate('/');
+                          }}
+                          aria-label="Sign out of account"
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Sign out of account</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <Link to="/auth/login" className="pl-2 border-l border-[#E2E8F0]">
-                  <Button variant="outline" size="sm" leftIcon={<LogIn className="w-3.5 h-3.5" />}>
+                <div className="flex items-center gap-2 pl-1 border-l border-[#E2E8F0]">
+                  <Link
+                    to="/auth/login"
+                    className="h-8 px-3 rounded-lg text-xs font-semibold text-[#0F172A] hover:bg-[#F4F8FF] hover:text-[#2563EB] inline-flex items-center transition-colors"
+                  >
                     Sign In
-                  </Button>
-                </Link>
+                  </Link>
+                  <Link
+                    to="/auth/register"
+                    className="h-8 px-3 rounded-lg text-xs font-semibold bg-[#2563EB] text-white hover:bg-[#1D4ED8] inline-flex items-center transition-colors shadow-2xs"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               )}
             </div>
 
-            {/* Mobile & Tablet Toggle Controls (< 1024px) */}
+            {/* Mobile Toggle (< 1024px) */}
             <div className="flex items-center gap-2 lg:hidden">
               <button
                 type="button"
                 onClick={() => setIsSupportModalOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1D4ED8] bg-[#F4F8FF] border border-[#2563EB]/25"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#1D4ED8] bg-[#F4F8FF] border border-[#2563EB]/25"
               >
                 <HeartHandshake className="w-3.5 h-3.5 text-[#2563EB]" />
-                <span>Request Saathi</span>
+                <span className="hidden sm:inline">Request Saathi</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-xl text-[#0F172A] hover:bg-[#F4F8FF] border border-[#E2E8F0] transition-colors focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-[#0F172A] hover:bg-[#F4F8FF] border border-[#E2E8F0] transition-colors focus-visible:outline-2 focus-visible:outline-[#2563EB]"
                 aria-label="Toggle navigation menu"
                 aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer / Dropdown */}
+        {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div
             id="mobile-navigation-menu"
@@ -444,7 +400,9 @@ export const PublicLayout: React.FC = () => {
                       </div>
                       <div>
                         <div className="text-xs font-bold text-[#0F172A]">{displayName}</div>
-                        <div className="text-[10px] text-[#64748B] capitalize">{displayRole}</div>
+                        <div className="text-[10px] text-[#1D4ED8] font-mono font-bold">
+                          ID: {currentUser.publicId || 'TS-7K9P-X4QM'}
+                        </div>
                       </div>
                     </div>
                     <Button
@@ -491,11 +449,18 @@ export const PublicLayout: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <Link to="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" size="md" className="w-full" leftIcon={<LogIn className="w-4 h-4" />}>
-                    Sign In
-                  </Button>
-                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link to="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" size="md" className="w-full" leftIcon={<LogIn className="w-4 h-4" />}>
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link to="/auth/register" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="primary" size="md" className="w-full" leftIcon={<UserPlus className="w-4 h-4" />}>
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
           </div>

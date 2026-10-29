@@ -164,6 +164,9 @@ export const SupportRequestTracker: React.FC = () => {
                     <span className="text-xs text-[#64748B]">
                       Organ: <strong className="text-[#0F172A] uppercase">{req.organCategory}</strong>
                     </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-[#2563EB]/20 text-[11px] font-mono font-bold text-[#1D4ED8]">
+                      Public ID: {req.patientPublicId || 'TS-7K9P-X4QM'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge

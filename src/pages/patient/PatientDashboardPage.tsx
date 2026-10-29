@@ -28,31 +28,49 @@ export const PatientDashboardPage: React.FC = () => {
   return (
     <div className="py-6 sm:py-10 space-y-6 sm:space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-left">
       {/* Patient Welcome Hero */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 sm:p-8 shadow-xs">
+      <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-xs">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant="primary">
                 {currentUser?.role === 'family' ? 'Family Caregiver Workspace' : 'Patient Workspace'}
               </Badge>
               <Badge variant="neutral">Organ: KIDNEY / RENAL</Badge>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F4F8FF] border border-[#2563EB]/25 text-[11px] font-mono font-bold text-[#1D4ED8]">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
+                Public ID: {currentUser?.publicId || 'TS-7K9P-X4QM'}
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] font-heading">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight">
               Welcome back, {currentUser?.fullName || 'Transplant Saathi Patient'}
             </h1>
-            <p className="text-sm text-[#64748B] max-w-2xl">
+            <p className="text-xs sm:text-sm text-[#64748B] max-w-2xl leading-relaxed">
               Track your THOTA administrative milestones, organize statutory filings, prepare doctor visit notes, and coordinate peer volunteer navigation.
             </p>
+
+            {/* Overall Milestone Progress Bar */}
+            <div className="pt-1 max-w-md">
+              <div className="flex items-center justify-between text-xs font-semibold text-[#0F172A] mb-1">
+                <span>Administrative Preparation Progress</span>
+                <span className="text-[#2563EB]">Stage 2 of 5 (40%)</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full bg-[#2563EB] transition-all duration-300 w-[40%]" />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/20 text-center sm:text-right">
+            <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] text-center sm:text-right">
               <div className="text-[10px] text-[#64748B] font-bold uppercase tracking-wider">
                 Emergency 24x7 NOTTO Helpline
               </div>
-              <div className="text-base font-extrabold text-[#2563EB] font-heading">
+              <a
+                href="tel:1800114770"
+                className="text-lg font-extrabold text-[#2563EB] hover:underline block my-0.5"
+              >
                 1800-11-4770
-              </div>
+              </a>
               <div className="text-[10px] text-[#64748B]">Toll Free Statutory Assistance</div>
             </div>
           </div>

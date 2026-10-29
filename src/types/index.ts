@@ -1,18 +1,82 @@
-export type UserRole = 'patient' | 'family' | 'volunteer' | 'hospital_staff' | 'admin';
+export type UserRole = 'patient' | 'family' | 'volunteer' | 'hospital_staff' | 'admin' | 'donor';
 
 export type OrganType = 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow';
 
 export type RequestStatus = 'submitted' | 'under_review' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
 
+export type DonorPledgeStatus = 'pledged_interest' | 'notto_registered' | 'living_donor_candidate' | 'withdrawn';
+
+export type PledgedOrganCategory = 'all' | 'kidney' | 'liver' | 'heart' | 'lungs' | 'cornea' | 'pancreas' | 'bone_marrow' | 'tissues';
+
+export interface DonorProfile {
+  id: string;
+  userId: string;
+  publicDonorId: string; // Permanent anonymous donor identifier (e.g. "TS-DNR-7K9P-X4QM")
+  pledgeStatus: DonorPledgeStatus;
+  pledgedOrgans: PledgedOrganCategory[];
+  familyInformed: boolean;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  officialNottoRegistrationNumber?: string;
+  state: string;
+  city?: string;
+  bloodGroup?: string;
+  consentSigned: boolean;
+  consentSignedAt: string;
+  isPublicPledgeAnonymous: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicDonorIdentity {
+  publicDonorId: string;
+  pledgeStatus: DonorPledgeStatus;
+  pledgedOrgans: PledgedOrganCategory[];
+  state: string;
+  pledgeDate: string;
+  familyInformed: boolean;
+}
+
+export interface DonorMilestoneItem {
+  id: string;
+  title: string;
+  description: string;
+  isCompleted: boolean;
+  statutoryNotice?: string;
+  officialUrl?: string;
+  completedAt?: string;
+}
+
 export interface UserProfile {
   id: string;
+  publicId?: string; // Permanent anonymous public identifier (e.g. "TS-7K9P-X4QM")
   email: string;
   fullName: string;
   phone?: string;
   role: UserRole;
   organization?: string;
+  hospitalVerificationStatus?: 'none' | 'pending' | 'verified' | 'rejected';
+  hospitalRegistrationNumber?: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PublicUserIdentity {
+  publicId: string;
+  role: UserRole;
+  avatarSeed: string;
+  organCategory?: OrganType;
+  state?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface UserPrivacySettings {
+  publicId: string;
+  isPseudonymous: boolean;
+  hideContactFromVolunteers: boolean;
+  showGeneralRegionOnly: boolean;
 }
 
 export type HospitalReviewStatus = 'verified' | 'pending' | 'flagged';
@@ -55,6 +119,7 @@ export interface VerifiedHospital {
 export interface AssistanceRequest {
   id: string;
   patientId: string;
+  patientPublicId?: string; // Pseudonymous identifier (e.g. "TS-7K9P-X4QM")
   patientName: string;
   contactPhone: string;
   organCategory: OrganType;
@@ -68,6 +133,25 @@ export interface AssistanceRequest {
   assignedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SanitizedAssistanceRequest {
+  id: string;
+  patientPublicId: string;
+  patientDisplayName: string;
+  contactPhoneMasked: string;
+  organCategory: OrganType;
+  hospitalName: string;
+  supportType: 'Paperwork (Form 1/2/3)' | 'Wayfinding & Logistics' | 'Language Help' | 'Financial Scheme Guidance';
+  notes?: string;
+  status: RequestStatus;
+  assignedVolunteerId?: string;
+  assignedVolunteerName?: string;
+  coordinatorNotes?: string;
+  assignedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  isAuthorizedViewer: boolean;
 }
 
 export interface HospitalIntakeRecord {
@@ -235,4 +319,22 @@ export interface RequestAssignment {
   assignedAt: string;
   completionNotes?: string;
   completedAt?: string;
+}
+
+export interface HospitalApplication {
+  id: string;
+  userId: string;
+  hospitalName: string;
+  registrationNumber: string;
+  state: string;
+  city: string;
+  coordinatorName: string;
+  officialEmail: string;
+  officialPhone: string;
+  accreditation: string;
+  status: 'pending' | 'verified' | 'rejected';
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
 }

@@ -364,9 +364,14 @@ export const VolunteerPortal: React.FC<{ onRequestNewSupport?: () => void }> = (
                   </div>
 
                   <div>
-                    <h4 className="text-base font-bold text-[#0F172A] font-heading">
-                      {req.patientName}
-                    </h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-base font-bold text-[#0F172A] font-heading">
+                        {req.patientName}
+                      </h4>
+                      <span className="text-[11px] font-mono font-bold text-[#1D4ED8] bg-[#F4F8FF] px-2 py-0.5 rounded-full border border-[#2563EB]/20">
+                        {req.patientPublicId || 'TS-7K9P-X4QM'}
+                      </span>
+                    </div>
                     <div className="text-xs text-[#2563EB] font-bold uppercase tracking-wider mt-0.5">
                       {req.organCategory} — {req.supportType}
                     </div>
