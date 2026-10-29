@@ -50,7 +50,7 @@ interface OrganDefinition {
 const ORGAN_OPTIONS: OrganDefinition[] = [
   {
     id: 'all',
-    label: 'All Organs',
+    label: 'All Organ Programs',
     badgeLabel: 'All Programs',
     icon: Layers,
     description: 'All statutory organ & tissue transplantation programs'
@@ -118,8 +118,15 @@ export const DirectoryPage: React.FC = () => {
 
   // Search, filter, and location state from URL params or defaults
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [selectedOrgan, setSelectedOrgan] = useState(searchParams.get('organ') || 'all');
-  const [selectedCountry, setSelectedCountry] = useState(searchParams.get('country') || 'all');
+  
+  // Selected organs array (parsed from URL or defaults to ['all'])
+  const selectedOrgans = useMemo(() => {
+    const raw = searchParams.get('organ');
+    if (!raw || raw === 'all') return ['all'];
+    const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    return parts.length > 0 ? parts : ['all'];
+  }, [searchParams]);
+
   const [selectedState, setSelectedState] = useState(searchParams.get('state') || 'all');
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'all');
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get('verified_only') === 'true');
@@ -159,9 +166,6 @@ export const DirectoryPage: React.FC = () => {
   // Master hospital data for populating location dropdowns and organ counts
   const allHospitals = useMemo(() => getStoredHospitals(), []);
 
-  // Countries: in statutory dataset all centers belong to India
-  const countries = useMemo(() => ['all', 'India'], []);
-
   // Dynamic States from stored hospitals
   const states = useMemo(() => {
     const list = Array.from(new Set(allHospitals.map((h) => h.state))).sort();
@@ -190,7 +194,7 @@ export const DirectoryPage: React.FC = () => {
     return counts;
   }, [allHospitals]);
 
-  // Query hook integration
+  // Query hook integration (Country filter removed, organ list supported)
   const {
     data: filteredAndSortedHospitals = [],
     isLoading,
@@ -198,8 +202,7 @@ export const DirectoryPage: React.FC = () => {
     refetch
   } = useHospitals({
     searchQuery,
-    organ: selectedOrgan,
-    country: selectedCountry,
+    organ: selectedOrgans.join(','),
     state: selectedState,
     city: selectedCity,
     verifiedOnly,
@@ -227,14 +230,49 @@ export const DirectoryPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleOrganSelect = (organId: string) => {
-    setSelectedOrgan(organId);
-    updateSearchParam('organ', organId);
+  // Select or deselect organ program from list
+  const handleOrganToggle = (organId: string) => {
+    let next: string[];
+
+    if (organId === 'all') {
+      next = ['all'];
+    } else {
+      const activeWithoutAll = selectedOrgans.filter((id) => id !== 'all');
+      if (activeWithoutAll.includes(organId)) {
+        // Deselect the organ program
+        next = activeWithoutAll.filter((id) => id !== organId);
+        if (next.length === 0) {
+          next = ['all'];
+        }
+      } else {
+        // Select the organ program
+        next = [...activeWithoutAll, organId];
+      }
+    }
+
+    const newParams = new URLSearchParams(searchParams);
+    if (next.length === 0 || (next.length === 1 && next[0] === 'all')) {
+      newParams.delete('organ');
+    } else {
+      newParams.set('organ', next.join(','));
+    }
+    setSearchParams(newParams);
+    setCurrentPage(1);
   };
 
-  const handleCountrySelect = (country: string) => {
-    setSelectedCountry(country);
-    updateSearchParam('country', country);
+  const handleOrganSelect = (organId: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (organId === 'all' || !organId) {
+      newParams.delete('organ');
+    } else {
+      newParams.set('organ', organId);
+    }
+    setSearchParams(newParams);
+    setCurrentPage(1);
+  };
+
+  const handleClearOrgans = () => {
+    handleOrganSelect('all');
   };
 
   const handleStateSelect = (state: string) => {
@@ -268,8 +306,6 @@ export const DirectoryPage: React.FC = () => {
 
   const clearAllFilters = () => {
     setSearchQuery('');
-    setSelectedOrgan('all');
-    setSelectedCountry('all');
     setSelectedState('all');
     setSelectedCity('all');
     setVerifiedOnly(false);
@@ -282,14 +318,13 @@ export const DirectoryPage: React.FC = () => {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (searchQuery.trim()) count++;
-    if (selectedOrgan !== 'all') count++;
-    if (selectedCountry !== 'all') count++;
+    if (selectedOrgans.length > 0 && !selectedOrgans.includes('all')) count += selectedOrgans.length;
     if (selectedState !== 'all') count++;
     if (selectedCity !== 'all') count++;
     if (verifiedOnly) count++;
     if (selectedReviewStatus !== 'all') count++;
     return count;
-  }, [searchQuery, selectedOrgan, selectedCountry, selectedState, selectedCity, verifiedOnly, selectedReviewStatus]);
+  }, [searchQuery, selectedOrgans, selectedState, selectedCity, verifiedOnly, selectedReviewStatus]);
 
   const hasActiveFilters = activeFilterCount > 0;
 
@@ -366,64 +401,96 @@ export const DirectoryPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Organ Filters Section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
-            Filter by Organ Program
-          </label>
-          {selectedOrgan !== 'all' && (
+      {/* 1. Filter by Organ Program - Simple, Clean Vertical List System */}
+      <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] space-y-2.5">
+        <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#0F172A]">
+              Filter by Organ Program
+            </h2>
+            <p className="text-[11px] text-[#64748B] mt-0.5">
+              Select or deselect organ transplantation programs to narrow verified centers
+            </p>
+          </div>
+          {selectedOrgans.length > 0 && !selectedOrgans.includes('all') && (
             <button
-              onClick={() => handleOrganSelect('all')}
-              className="text-xs text-[#2563EB] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+              type="button"
+              onClick={handleClearOrgans}
+              className="text-xs text-[#2563EB] font-semibold hover:text-[#1D4ED8] hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>Show All Organs</span>
+              <span>Reset to All Programs</span>
             </button>
           )}
         </div>
 
-        {/* Compact Organ Buttons Scroll/Bar */}
+        {/* Clean, responsive vertical list */}
         <div
-          role="toolbar"
-          aria-label="Organ filters"
-          className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar scroll-smooth"
+          role="group"
+          aria-label="Organ programs list"
+          className="divide-y divide-[#E2E8F0]/70 rounded-lg border border-[#E2E8F0] bg-white overflow-hidden max-h-72 overflow-y-auto"
         >
           {ORGAN_OPTIONS.map((organ) => {
             const Icon = organ.icon;
-            const isSelected = selectedOrgan === organ.id;
+            const isAll = organ.id === 'all';
+            const isSelected = isAll
+              ? selectedOrgans.length === 0 || selectedOrgans.includes('all')
+              : selectedOrgans.includes(organ.id);
             const count = organCounts[organ.id] ?? 0;
 
             return (
-              <button
+              <label
                 key={organ.id}
-                onClick={() => handleOrganSelect(organ.id)}
-                type="button"
-                className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border shrink-0 cursor-pointer ${
+                className={`flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs transition-colors cursor-pointer select-none ${
                   isSelected
-                    ? 'bg-[#2563EB] text-white border-[#2563EB] shadow-xs'
-                    : 'bg-white text-[#0F172A] border-[#E2E8F0] hover:bg-[#F4F8FF] hover:border-[#2563EB]/40'
+                    ? 'bg-[#F4F8FF] text-[#1D4ED8] font-semibold'
+                    : 'bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
                 }`}
-                title={organ.description}
-                aria-pressed={isSelected}
               >
-                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#2563EB]'}`} />
-                <span>{organ.label}</span>
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Selection Checkbox Indicator */}
+                  <span
+                    className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${
+                      isSelected
+                        ? 'bg-[#2563EB] border border-[#2563EB] text-white'
+                        : 'border border-[#CBD5E1] bg-white'
+                    }`}
+                  >
+                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                  </span>
+
+                  {/* Native hidden checkbox for accessibility and keyboard navigation */}
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleOrganToggle(organ.id)}
+                    aria-label={organ.label}
+                    className="sr-only"
+                  />
+
+                  {/* Organ Icon & Label */}
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#2563EB]' : 'text-[#64748B]'}`} />
+                  <span className="truncate">{organ.label}</span>
+                </div>
+
+                {/* Registry Hospital Count Badge */}
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-[#F4F8FF] text-[#64748B] border border-[#E2E8F0]'
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                    isSelected
+                      ? 'bg-[#2563EB] text-white'
+                      : 'bg-[#F4F8FF] text-[#64748B] border border-[#E2E8F0]'
                   }`}
                 >
                   {count}
                 </span>
-              </button>
+              </label>
             );
           })}
         </div>
 
-        {/* Accessible hidden/synchronized select for test automation & screen readers */}
+        {/* Accessible hidden select for backward-compatibility with screen readers & test automation */}
         <select
           aria-label="Filter by organ program"
-          value={selectedOrgan}
+          value={selectedOrgans[0] || 'all'}
           onChange={(e) => handleOrganSelect(e.target.value)}
           className="sr-only"
         >
@@ -486,31 +553,10 @@ export const DirectoryPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Desktop Filter Row (>= lg) */}
-        <div className="hidden lg:grid grid-cols-12 gap-2.5 pt-1">
-          {/* Country Selector */}
-          <div className="col-span-2">
-            <div className="relative">
-              <select
-                aria-label="Filter by country"
-                value={selectedCountry}
-                onChange={(e) => handleCountrySelect(e.target.value)}
-                className="w-full pl-2.5 pr-6 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"
-              >
-                <option value="all">All Countries</option>
-                {countries
-                  .filter((c) => c !== 'all')
-                  .map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-
+        {/* 2. Desktop Filter Row (>= lg) - Country Filter Removed Completely */}
+        <div className="hidden lg:grid grid-cols-5 gap-2.5 pt-1">
           {/* State Selector */}
-          <div className="col-span-2">
+          <div>
             <select
               aria-label="Filter by state"
               value={selectedState}
@@ -529,7 +575,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
 
           {/* City Selector */}
-          <div className="col-span-2">
+          <div>
             <select
               aria-label="Filter by city"
               value={selectedCity}
@@ -550,7 +596,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
 
           {/* Verified-Only Toggle */}
-          <div className="col-span-2 flex items-center">
+          <div className="flex items-center">
             <button
               type="button"
               onClick={() => handleVerifiedOnlyToggle(!verifiedOnly)}
@@ -567,7 +613,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
 
           {/* Review Status Selector */}
-          <div className="col-span-2">
+          <div>
             <select
               aria-label="Filter by review status"
               value={selectedReviewStatus}
@@ -582,7 +628,7 @@ export const DirectoryPage: React.FC = () => {
           </div>
 
           {/* Sort By Selector */}
-          <div className="col-span-2">
+          <div>
             <select
               aria-label="Sort hospitals by"
               value={sortKey}
@@ -609,11 +655,11 @@ export const DirectoryPage: React.FC = () => {
               Showing <strong className="text-[#0F172A]">{paginatedHospitals.length}</strong> of{' '}
               <strong className="text-[#0F172A]">{totalItems}</strong> matching centers (Page {currentPage} of {totalPages})
             </span>
-            {selectedOrgan !== 'all' && (
+            {selectedOrgans.length > 0 && !selectedOrgans.includes('all') && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F4F8FF] border border-[#E2E8F0] text-[#1D4ED8] font-medium text-[11px]">
-                Organ: {ORGAN_OPTIONS.find((o) => o.id === selectedOrgan)?.label}
+                Organ: {selectedOrgans.map((id) => ORGAN_OPTIONS.find((o) => o.id === id)?.label || id).join(', ')}
                 <button
-                  onClick={() => handleOrganSelect('all')}
+                  onClick={() => handleOrganToggle('all')}
                   className="hover:text-rose-600 cursor-pointer ml-0.5"
                   aria-label="Remove organ filter"
                 >
@@ -703,27 +749,63 @@ export const DirectoryPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Country */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-[#0F172A]">Country</label>
-                <select
-                  aria-label="Mobile filter by country"
-                  value={selectedCountry}
-                  onChange={(e) => handleCountrySelect(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] cursor-pointer"
-                >
-                  <option value="all">All Countries</option>
-                  {countries
-                    .filter((c) => c !== 'all')
-                    .map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                </select>
+              {/* Mobile Organ Program List */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#0F172A]">Organ Programs</label>
+                <div className="divide-y divide-[#E2E8F0]/70 rounded-lg border border-[#E2E8F0] bg-white overflow-hidden max-h-48 overflow-y-auto">
+                  {ORGAN_OPTIONS.map((organ) => {
+                    const Icon = organ.icon;
+                    const isAll = organ.id === 'all';
+                    const isSelected = isAll
+                      ? selectedOrgans.length === 0 || selectedOrgans.includes('all')
+                      : selectedOrgans.includes(organ.id);
+                    const count = organCounts[organ.id] ?? 0;
+
+                    return (
+                      <label
+                        key={organ.id}
+                        className={`flex items-center justify-between gap-2.5 px-3 py-2 text-xs transition-colors cursor-pointer select-none ${
+                          isSelected
+                            ? 'bg-[#F4F8FF] text-[#1D4ED8] font-semibold'
+                            : 'bg-white text-[#0F172A] hover:bg-[#F8FAFC]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? 'bg-[#2563EB] border border-[#2563EB] text-white'
+                                : 'border border-[#CBD5E1] bg-white'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleOrganToggle(organ.id)}
+                            aria-label={`Mobile ${organ.label}`}
+                            className="sr-only"
+                          />
+                          <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#2563EB]' : 'text-[#64748B]'}`} />
+                          <span className="truncate">{organ.label}</span>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                            isSelected
+                              ? 'bg-[#2563EB] text-white'
+                              : 'bg-[#F4F8FF] text-[#64748B] border border-[#E2E8F0]'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* State */}
+              {/* State (Country filter removed) */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[#0F172A]">State</label>
                 <select
@@ -1024,10 +1106,13 @@ export const DirectoryPage: React.FC = () => {
                         <div className="flex flex-wrap gap-1">
                           {hospital.organsSupported.map((org) => {
                             const isMatchingOrgan =
-                              selectedOrgan !== 'all' &&
-                              (selectedOrgan === org ||
-                                (selectedOrgan === 'lung' && org === 'lungs') ||
-                                (selectedOrgan === 'hsct' && org === 'bone_marrow'));
+                              !selectedOrgans.includes('all') &&
+                              selectedOrgans.some(
+                                (sel) =>
+                                  sel === org ||
+                                  (sel === 'lung' && org === 'lungs') ||
+                                  (sel === 'hsct' && org === 'bone_marrow')
+                              );
 
                             return (
                               <span

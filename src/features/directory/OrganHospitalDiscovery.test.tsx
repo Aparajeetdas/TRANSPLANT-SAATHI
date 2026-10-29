@@ -40,26 +40,27 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
     vi.restoreAllMocks();
   });
 
-  describe('1. Organ Filters & Discovery', () => {
-    it('renders all statutory organ filter buttons with clear labels and badge counts', async () => {
+  describe('1. Organ Program List System & Selection', () => {
+    it('renders all statutory organ programs in a simple vertical list with checkboxes and badge counts', async () => {
       renderDirectoryWithQuery();
 
-      expect(screen.getByRole('button', { name: /all organs/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /kidney/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /liver/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /heart/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /lung/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /pancreas/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /intestine/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /cornea/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /bone marrow \/ hsct/i })).toBeInTheDocument();
+      expect(screen.getByText(/filter by organ program/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('All Organ Programs')).toBeInTheDocument();
+      expect(screen.getByLabelText('Kidney')).toBeInTheDocument();
+      expect(screen.getByLabelText('Liver')).toBeInTheDocument();
+      expect(screen.getByLabelText('Heart')).toBeInTheDocument();
+      expect(screen.getByLabelText('Lung')).toBeInTheDocument();
+      expect(screen.getByLabelText('Pancreas')).toBeInTheDocument();
+      expect(screen.getByLabelText('Intestine')).toBeInTheDocument();
+      expect(screen.getByLabelText('Cornea')).toBeInTheDocument();
+      expect(screen.getByLabelText('Bone Marrow / HSCT')).toBeInTheDocument();
     });
 
-    it('filters centers by clicking the Heart organ filter', async () => {
+    it('filters centers by selecting Heart from the organ list', async () => {
       renderDirectoryWithQuery();
 
-      const heartButton = screen.getByRole('button', { name: /heart/i });
-      fireEvent.click(heartButton);
+      const heartCheckbox = screen.getByLabelText('Heart');
+      fireEvent.click(heartCheckbox);
 
       await waitFor(() => {
         // AIIMS and Madras Medical College support Heart
@@ -70,11 +71,31 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
       });
     });
 
+    it('allows users to select and deselect organ programs', async () => {
+      renderDirectoryWithQuery();
+
+      const kidneyCheckbox = screen.getByLabelText('Kidney');
+      
+      // Select Kidney
+      fireEvent.click(kidneyCheckbox);
+      await waitFor(() => {
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+        expect(screen.queryByText(/National Institute of Mental Health/i)).not.toBeInTheDocument();
+      });
+
+      // Deselect Kidney by clicking it again
+      fireEvent.click(kidneyCheckbox);
+      await waitFor(() => {
+        // Deselecting defaults back to all programs, displaying All India Institute and other centers
+        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
+      });
+    });
+
     it('filters centers by Intestine and shows verified statutory license citation', async () => {
       renderDirectoryWithQuery();
 
-      const intestineButton = screen.getByRole('button', { name: /intestine/i });
-      fireEvent.click(intestineButton);
+      const intestineCheckbox = screen.getByLabelText('Intestine');
+      fireEvent.click(intestineCheckbox);
 
       await waitFor(() => {
         // AIIMS has verified statutory intestine license
@@ -95,7 +116,7 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
     });
   });
 
-  describe('2. Search & Location Filters', () => {
+  describe('2. Search & Location Filters (Without Country)', () => {
     it('searches hospitals by name', async () => {
       renderDirectoryWithQuery();
 
@@ -138,15 +159,11 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
       expect(citySelect).toHaveTextContent(/New Delhi/i);
     });
 
-    it('filters by country (India vs all)', async () => {
+    it('completely removes the country filter UI since India is the sole supported country', () => {
       renderDirectoryWithQuery();
 
-      const countrySelect = screen.getByLabelText(/filter by country/i);
-      fireEvent.change(countrySelect, { target: { value: 'India' } });
-
-      await waitFor(() => {
-        expect(screen.getByText(/All India Institute of Medical Sciences/i)).toBeInTheDocument();
-      });
+      expect(screen.queryByLabelText(/filter by country/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/mobile filter by country/i)).not.toBeInTheDocument();
     });
   });
 
@@ -155,8 +172,8 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
       renderDirectoryWithQuery();
 
       // Filter by Cornea
-      const corneaBtn = screen.getByRole('button', { name: /cornea/i });
-      fireEvent.click(corneaBtn);
+      const corneaCheckbox = screen.getByLabelText('Cornea');
+      fireEvent.click(corneaCheckbox);
 
       // Filter by State Karnataka
       const stateSelect = screen.getByLabelText(/filter by state/i);
@@ -197,7 +214,7 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
   });
 
   describe('4. Mobile Layout & Filter Drawer', () => {
-    it('opens and closes the mobile filter drawer', async () => {
+    it('opens and closes the mobile filter drawer without any country filter', async () => {
       renderDirectoryWithQuery();
 
       // Mobile filter trigger button
@@ -207,6 +224,9 @@ describe('Organ-Based Hospital Discovery & Verification System', () => {
       // Drawer should be open
       expect(screen.getByRole('dialog', { name: /hospital filters/i })).toBeInTheDocument();
       expect(screen.getByText(/Filter Hospital Directory/i)).toBeInTheDocument();
+
+      // Verify no country filter in drawer
+      expect(screen.queryByLabelText(/mobile filter by country/i)).not.toBeInTheDocument();
 
       // Close button inside drawer
       const closeBtn = screen.getByLabelText(/close filters drawer/i);

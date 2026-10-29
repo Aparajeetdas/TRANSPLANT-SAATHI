@@ -37,9 +37,17 @@ export const useHospitals = (params?: HospitalFilterParams) => {
       }
 
       if (params?.organ && params.organ !== 'all') {
-        const raw = params.organ.toLowerCase();
-        const normalized = raw === 'lung' ? 'lungs' : raw === 'hsct' ? 'bone_marrow' : raw;
-        result = result.filter((h) => h.organsSupported.includes(normalized as OrganType));
+        const organTokens = params.organ
+          .toLowerCase()
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const normalizedTokens = organTokens.map((raw) =>
+          raw === 'lung' ? 'lungs' : raw === 'hsct' ? 'bone_marrow' : raw
+        );
+        result = result.filter((h) =>
+          normalizedTokens.some((tok) => h.organsSupported.includes(tok as OrganType))
+        );
       }
 
       if (params?.country && params.country !== 'all') {
