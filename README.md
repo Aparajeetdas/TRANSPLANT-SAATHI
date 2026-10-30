@@ -58,7 +58,6 @@ cp .env.example .env.local
 
 Edit `.env.local` with your credentials:
 ```env
-VITE_GOOGLE_MAPS_API_KEY=AIzaSy...your-restricted-api-key
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-anon-key-here
 VITE_APP_URL=http://localhost:5174
@@ -84,31 +83,9 @@ npm run build
 
 ---
 
-## 🗺️ Google Maps JavaScript API Configuration & Restrictions
+## 🗺️ Hospital Map Navigation
 
-Transplant Saathi utilizes the official Google Maps React integration (`@vis.gl/react-google-maps`) for plotting verified transplant hospitals with interactive InfoWindows, custom high-contrast pins, and automatic viewport fitting.
-
-### Step-by-Step Setup:
-1. **Create a Google Cloud Project:**
-   - Navigate to the [Google Cloud Console](https://console.cloud.google.com/).
-   - Click the project dropdown and select **New Project** (e.g., `Transplant-Saathi-Production`).
-2. **Enable Maps JavaScript API:**
-   - Go to **APIs & Services > Library**.
-   - Search for **Maps JavaScript API** and click **Enable**.
-   - *Note:* Do **not** enable Geocoding or Places API unless explicitly requested; the directory uses pre-verified coordinates to avoid unnecessary billing charges.
-3. **Configure Cloud Billing:**
-   - Attach a Cloud Billing account under **Billing**. Google Cloud provides a $200 monthly free tier credit for Maps JavaScript API requests.
-4. **Create and Restrict an API Key:**
-   - Go to **APIs & Services > Credentials > Create Credentials > API Key**.
-   - Under **Application restrictions**, select **Websites (HTTP referrers)** and add your authorized URLs:
-     - `http://localhost:5174/*` (Local development)
-     - `https://your-production-domain.com/*` (Production website)
-   - Under **API restrictions**, select **Restrict key** and choose **Maps JavaScript API** only.
-   - Click **Save**.
-5. **Assign the Key:**
-   - Set `VITE_GOOGLE_MAPS_API_KEY=AIzaSy...` in your `.env.local` or hosting provider environment variables.
-
-> ℹ️ **Graceful Fallback Mode:** If `VITE_GOOGLE_MAPS_API_KEY` is omitted or empty, Transplant Saathi displays a helpful setup fallback card with verified coordinate chips and an instant one-click toggle to the **Accessible List View**, ensuring zero downtime or blank screen crashes.
+Transplant Saathi provides direct Google Maps search links using verified facility addresses and statutory GPS coordinates, opening directly in external tabs (`https://www.google.com/maps/search/?api=1&query=...`) without requiring a Google Maps API key or paid third-party mapping dependencies.
 
 ---
 
@@ -118,7 +95,6 @@ All client-side environment variables must be prefixed with `VITE_`:
 
 | Variable | Required | Description | Example / Default |
 |---|---|---|---|
-| `VITE_GOOGLE_MAPS_API_KEY` | Optional (Fallback provided) | Google Maps JavaScript API public key | `AIzaSy...` |
 | `VITE_SUPABASE_URL` | Optional (Prod) | Supabase project URL | `https://your-project.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Optional (Prod) | Supabase public anonymous key (JWT) | `eyJhbGci...` |
 | `VITE_APP_URL` | Optional (Prod) | Frontend base URL for auth redirects | `http://localhost:5174` |

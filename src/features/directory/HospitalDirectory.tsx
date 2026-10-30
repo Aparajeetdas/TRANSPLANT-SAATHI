@@ -9,7 +9,7 @@ import React, { useMemo, useState } from 'react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { EmptyState } from '../../components/common/StateViews';
-import { HospitalMap } from '../../components/map/HospitalMap';
+import { getHospitalGoogleMapsUrl } from '../../lib/maps';
 import { getStoredHospitals } from '../../lib/store';
 import { OrganType, VerifiedHospital } from '../../types';
 import { HospitalDetailModal } from './HospitalDetailModal';
@@ -24,8 +24,6 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
   const [selectedOrgan, setSelectedOrgan] = useState<string>('all');
   const [selectedState, setSelectedState] = useState<string>('all');
   const [activeHospitalModal, setActiveHospitalModal] = useState<VerifiedHospital | null>(null);
-  const [selectedMapHospital, setSelectedMapHospital] = useState<VerifiedHospital | null>(null);
-  const [viewMode, setViewMode] = useState<'both' | 'list'>('both');
 
   const states = useMemo(() => {
     const list = Array.from(new Set(hospitals.map((h) => h.state)));
@@ -70,30 +68,6 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
           <p className="text-sm text-[#64748B] mt-1 max-w-2xl">
             Each listing is verified against official NOTTO / ROTTO / SOTTO notifications and state licensing registries. All directory information includes citation sources and verification audit dates.
           </p>
-        </div>
-
-        {/* View Mode Switcher on larger screens */}
-        <div className="hidden lg:inline-flex p-1 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0]">
-          <button
-            onClick={() => setViewMode('both')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'both'
-                ? 'bg-[#2563EB] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            Split View (Map + List)
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'list'
-                ? 'bg-[#2563EB] text-white shadow-xs'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            List Only
-          </button>
         </div>
       </div>
 
@@ -185,19 +159,6 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
         />
       ) : (
         <div className="space-y-6">
-          {/* Interactive Map (shown in 'both' or 'map' modes) */}
-          {viewMode !== 'list' && (
-            <HospitalMap
-              hospitals={filteredHospitals}
-              selectedHospital={selectedMapHospital}
-              onSelectHospital={(h) => {
-                setSelectedMapHospital(h);
-                setActiveHospitalModal(h);
-              }}
-              onViewList={() => setViewMode('list')}
-            />
-          )}
-
           {/* Hospital Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredHospitals.map((hospital) => (
@@ -252,17 +213,28 @@ export const HospitalDirectory: React.FC<HospitalDirectoryProps> = ({ onRequestA
                   </div>
 
                   <div className="pt-4 border-t border-[#E2E8F0] flex items-center justify-between gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedMapHospital(hospital);
-                        setActiveHospitalModal(hospital);
-                      }}
-                      className="text-xs"
-                    >
-                      View Details & Audit
-                    </Button>
+                    {(() => {
+                      const mapUrl = getHospitalGoogleMapsUrl(hospital);
+                      if (mapUrl) {
+                        return (
+                          <a
+                            href={mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>View on Google Maps</span>
+                          </a>
+                        );
+                      }
+                      return (
+                        <span className="text-xs text-[#94A3B8] inline-flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#CBD5E1]" />
+                          <span>Location Unmapped</span>
+                        </span>
+                      );
+                    })()}
                     <Button
                       variant="primary"
                       size="sm"

@@ -1,13 +1,10 @@
 import {
   ArrowLeft,
   Building,
-  CheckCircle2,
   ExternalLink,
   FileText,
   Globe,
-  HeartHandshake,
   Hospital,
-  Mail,
   MapPin,
   Phone,
   ShieldCheck,
@@ -23,6 +20,7 @@ import { HospitalAssistanceRequestModal } from '../../features/hospital/Hospital
 import { OfficialRegistrationGuidanceModal } from '../../features/hospital/OfficialRegistrationGuidanceModal';
 import { RequestSupportModal } from '../../features/support/RequestSupportModal';
 import { useHospital } from '../../hooks/useHospitals';
+import { getHospitalGoogleMapsUrl } from '../../lib/maps';
 import { OrganType } from '../../types';
 
 export const HospitalDetailPage: React.FC = () => {
@@ -94,10 +92,35 @@ export const HospitalDetailPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] font-heading">
               {hospital.name}
             </h1>
-            <p className="text-xs sm:text-sm text-[#64748B] flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-[#2563EB] shrink-0" />
-              <span>{hospital.address} — {hospital.city}, {hospital.state}</span>
-            </p>
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+              <p className="text-xs sm:text-sm text-[#64748B] flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-[#2563EB] shrink-0" />
+                <span>{hospital.address} — {hospital.city}, {hospital.state}</span>
+              </p>
+              {(() => {
+                const mapUrl = getHospitalGoogleMapsUrl(hospital);
+                if (mapUrl) {
+                  return (
+                    <a
+                      href={mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#1D4ED8] bg-white border border-[#2563EB]/30 rounded-lg hover:bg-[#F4F8FF] transition-colors"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
+                      <span>View on Google Maps</span>
+                      <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                    </a>
+                  );
+                }
+                return (
+                  <span className="text-xs text-[#94A3B8] inline-flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#CBD5E1]" />
+                    <span>Location Unmapped</span>
+                  </span>
+                );
+              })()}
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">

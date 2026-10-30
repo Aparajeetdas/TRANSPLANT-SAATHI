@@ -15,9 +15,6 @@ export default defineConfig({
           if (id.includes('node_modules/@tanstack')) {
             return 'vendor-query';
           }
-          if (id.includes('node_modules/@vis.gl')) {
-            return 'vendor-google-maps';
-          }
           if (id.includes('node_modules/lucide-react')) {
             return 'vendor-icons';
           }

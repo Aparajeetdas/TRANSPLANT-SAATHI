@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   Compass,
+  FileText,
   HeartHandshake,
   LayoutDashboard,
   LogIn,
@@ -239,7 +240,7 @@ export const PublicLayout: React.FC = () => {
                       </div>
 
                       {/* Portal Access */}
-                      <div>
+                      <div className="space-y-1">
                         <Link
                           to={workspacePath}
                           onClick={() => setRoleDropdownOpen(false)}
@@ -248,6 +249,17 @@ export const PublicLayout: React.FC = () => {
                           <LayoutDashboard className="w-4 h-4 text-[#2563EB]" />
                           <span>{workspaceLabel}</span>
                         </Link>
+                        {currentUser && (role === 'patient' || role === 'family' || role === 'admin') && (
+                          <Link
+                            to="/patient"
+                            state={{ tab: 'my_requests' }}
+                            onClick={() => setRoleDropdownOpen(false)}
+                            className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-semibold text-[#0F172A] hover:bg-[#F4F8FF] hover:text-[#2563EB] transition-colors"
+                          >
+                            <FileText className="w-4 h-4 text-[#2563EB]" />
+                            <span>My Requests</span>
+                          </Link>
+                        )}
                       </div>
 
                       {/* Simulation Role Switcher (RBAC Demo) */}
@@ -327,6 +339,7 @@ export const PublicLayout: React.FC = () => {
                 className="h-8 w-8 flex items-center justify-center rounded-lg text-[#0F172A] hover:bg-[#F4F8FF] border border-[#E2E8F0] transition-colors focus-visible:outline-2 focus-visible:outline-[#2563EB]"
                 aria-label="Toggle navigation menu"
                 aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-navigation-menu"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
@@ -418,11 +431,20 @@ export const PublicLayout: React.FC = () => {
                     </Button>
                   </div>
 
-                  <Link to={workspacePath} onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="secondary" size="sm" className="w-full" leftIcon={<LayoutDashboard className="w-4 h-4" />}>
-                      {workspaceLabel}
-                    </Button>
-                  </Link>
+                  <div className="flex flex-col gap-1.5">
+                    <Link to={workspacePath} onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="secondary" size="sm" className="w-full" leftIcon={<LayoutDashboard className="w-4 h-4" />}>
+                        {workspaceLabel}
+                      </Button>
+                    </Link>
+                    {currentUser && (role === 'patient' || role === 'family' || role === 'admin') && (
+                      <Link to="/patient" state={{ tab: 'my_requests' }} onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" size="sm" className="w-full" leftIcon={<FileText className="w-4 h-4" />}>
+                          My Requests
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
 
                   {/* Mobile Role Switcher */}
                   <div className="pt-2 border-t border-[#E2E8F0]/80">

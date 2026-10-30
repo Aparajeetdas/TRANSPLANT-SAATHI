@@ -357,4 +357,73 @@ describe('Supabase Auth & Session Security Suite', () => {
       expect(screen.getByText(/Verification Link Sent/i)).toBeInTheDocument();
     });
   });
+
+  it('persists authenticated user session across storage and reloads', async () => {
+    const persistedUser: UserProfile = {
+      id: 'usr-persisted-99',
+      publicId: 'TS-99AB-CD77',
+      email: 'persisted.patient@example.com',
+      fullName: 'Anita Mehra',
+      role: 'patient',
+      isActive: true,
+      createdAt: '2026-03-01T10:00:00Z'
+    };
+
+    localStorage.setItem('transplant_saathi_current_user', JSON.stringify(persistedUser));
+
+    let capturedAuth: ReturnType<typeof useAuth> | undefined;
+
+    render(
+      <AuthProvider>
+        <AuthHookInspector onInspect={(auth) => { capturedAuth = auth; }} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(capturedAuth?.currentUser).not.toBeNull();
+      expect(capturedAuth?.currentUser?.email).toBe('persisted.patient@example.com');
+      expect(capturedAuth?.currentUser?.publicId).toBe('TS-99AB-CD77');
+    });
+  });
+
+  it('logs in successfully with valid credentials and establishes session', async () => {
+    let capturedAuth: ReturnType<typeof useAuth> | undefined;
+
+    render(
+      <AuthProvider>
+        <AuthHookInspector onInspect={(auth) => { capturedAuth = auth; }} />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(capturedAuth).toBeDefined());
+
+    const result = await act(async () => {
+      return await capturedAuth!.loginWithPassword('patient@transplantsaathi.org', 'ValidPass123!');
+    });
+
+    expect(result.success).toBe(true);
+    expect(capturedAuth!.currentUser).not.toBeNull();
+    expect(capturedAuth!.currentUser?.role).toBe('patient');
+
+    // Verify persisted in localStorage
+    const stored = JSON.parse(localStorage.getItem('transplant_saathi_current_user') || '{}');
+    expect(stored.email).toBe('patient@transplantsaathi.org');
+  });
+
+  it('maintains consistent mobile navigation and login elements across viewports', () => {
+    // Set viewport dimensions mimicking a mobile smartphone (375x667)
+    window.innerWidth = 375;
+    window.innerHeight = 667;
+    window.dispatchEvent(new Event('resize'));
+
+    renderAuthApp('/auth/login', null);
+
+    // Verify key auth elements are visible and accessible on mobile
+    expect(screen.getByRole('heading', { name: /Sign In to Transplant Saathi/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Forgot your password\?/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Create Patient Account/i })).toBeInTheDocument();
+  });
 });

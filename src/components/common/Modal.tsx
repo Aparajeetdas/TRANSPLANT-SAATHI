@@ -45,17 +45,23 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 overflow-y-auto"
+    >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-xs transition-opacity z-0"
         onClick={onClose}
         aria-hidden="true"
+        data-testid="modal-backdrop"
       />
 
-      <div className="flex min-h-full items-center justify-center p-4 text-center">
+      {/* Content positioning wrapper */}
+      <div className="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
         <div
-          className={`w-full ${maxWidthClasses[maxWidth]} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-2xl transition-all border border-[#E2E8F0] my-8`}
+          className={`w-full ${maxWidthClasses[maxWidth]} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-2xl transition-all border border-[#E2E8F0] my-8 relative z-10 pointer-events-auto`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -66,7 +72,7 @@ export const Modal: React.FC<ModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1 text-[#64748B] hover:bg-white hover:text-[#0F172A] transition-colors focus-visible:outline-2 focus-visible:outline-[#2563EB]"
+              className="rounded-lg p-1 text-[#64748B] hover:bg-white hover:text-[#0F172A] transition-colors focus-visible:outline-2 focus-visible:outline-[#2563EB] cursor-pointer"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />

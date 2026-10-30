@@ -29,8 +29,11 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import {
   registerDonorPledge,
+  setStoredUser,
   submitHospitalRegistrationApplication
 } from '../../lib/store';
+
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { PledgedOrganCategory } from '../../types';
 
 // ==============================================================================
@@ -362,6 +365,22 @@ export const RegisterPage: React.FC = () => {
     setAuthError(null);
     setSuccessNotice(null);
 
+    // If live Supabase backend is configured, register credentials under safe unprivileged 'patient' role
+    if (isSupabaseConfigured) {
+      const authResult = await signUpWithEmail(
+        data.officialEmail,
+        data.password,
+        `${data.coordinatorName} (${data.hospitalName})`,
+        'patient', // Baseline unprivileged role - hospital staff privileges are never granted automatically
+        data.officialPhone
+      );
+
+      if (!authResult.success) {
+        setAuthError(authResult.error || 'Failed to create coordinator account credentials.');
+        return;
+      }
+    }
+
     const result = submitHospitalRegistrationApplication({
       hospitalName: data.hospitalName,
       registrationNumber: data.registrationNumber,
@@ -379,7 +398,7 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (result.user) {
-      localStorage.setItem('transplant_saathi_current_user', JSON.stringify(result.user));
+      setStoredUser(result.user);
     }
 
     setHospitalApplicationSubmitted(data);

@@ -1726,8 +1726,22 @@ export const createHospitalAssistanceRequest = (
   input: CreateHospitalRequestInput,
   actor: UserProfile
 ): { success: boolean; request?: HospitalAssistanceRequest; error?: string } => {
-  if (!actor) {
-    return { success: false, error: 'Authentication required to submit assistance requests.' };
+  if (!actor || !actor.id) {
+    return { success: false, error: 'Authentication required to submit assistance requests. Please sign in.' };
+  }
+
+  if (actor.isActive === false) {
+    return {
+      success: false,
+      error: 'Account access restricted. Unverified or inactive accounts cannot submit assistance requests.'
+    };
+  }
+
+  if (actor.role !== 'patient' && actor.role !== 'family' && actor.role !== 'admin') {
+    return {
+      success: false,
+      error: 'Unauthorized: Assistance requests can only be initiated by registered Patients or Family Caregivers.'
+    };
   }
 
   if (!input.consentGiven) {
@@ -1778,10 +1792,10 @@ export const createHospitalAssistanceRequest = (
 
   const nowIso = now.toISOString();
   const referenceNumber = generateHospitalRequestReference(input.organProgram);
-  const requestId = `htr-${Date.now()}`;
+  const requestId = `htr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const initialHistory: RequestStatusHistoryEntry = {
-    id: `sh-${Date.now()}-1`,
+    id: `sh-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     fromStatus: null,
     toStatus: 'submitted',
     updatedBy: actor.fullName,

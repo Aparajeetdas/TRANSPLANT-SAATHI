@@ -235,6 +235,90 @@ describe('Verified Organ Transplant Request and Hospital Coordination System', (
       expect(res.success).toBe(false);
       expect(res.error).toMatch(/consent is required/i);
     });
+
+    it('displays required field validation items when description is too short or consent is unchecked', async () => {
+      const aiimsHospital = VERIFIED_HOSPITALS[0];
+      setStoredUser(mockPatient);
+
+      renderWithProviders(
+        <MemoryRouter>
+          <HospitalAssistanceRequestModal
+            isOpen={true}
+            onClose={vi.fn()}
+            hospital={aiimsHospital}
+          />
+        </MemoryRouter>
+      );
+
+      // Verify validation guidance banner is displayed when form is incomplete
+      expect(screen.getByText(/Required items before submission:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Short description must be at least 10 characters/i)).toBeInTheDocument();
+      expect(screen.getByText(/Informed consent checkbox must be selected/i)).toBeInTheDocument();
+
+      const submitBtn = screen.getByRole('button', { name: /submit assistance request/i });
+      expect(submitBtn).toBeDisabled();
+
+      // Type short description
+      const descInput = screen.getByLabelText(/short description of assistance needed/i);
+      fireEvent.change(descInput, { target: { value: 'Help' } });
+      expect(screen.getByText(/currently 4\/10/i)).toBeInTheDocument();
+
+      // Fill valid description
+      fireEvent.change(descInput, { target: { value: 'Need guidance for Form 1 registration at AIIMS.' } });
+      // Description error goes away
+      expect(screen.queryByText(/Short description must be at least 10 characters/i)).toBeNull();
+
+      // Check consent
+      const consentCheckbox = screen.getByLabelText(/I consent to transmitting this assistance inquiry/i);
+      fireEvent.click(consentCheckbox);
+
+      // Now form is valid and action required box is cleared
+      await waitFor(() => {
+        expect(screen.queryByText(/Required items before submission:/i)).toBeNull();
+      });
+      expect(submitBtn).toBeEnabled();
+    });
+
+    it('displays authentication required prompt when user is not logged in', () => {
+      const aiimsHospital = VERIFIED_HOSPITALS[0];
+      setStoredUser(null); // No active user session
+
+      renderWithProviders(
+        <MemoryRouter>
+          <HospitalAssistanceRequestModal
+            isOpen={true}
+            onClose={vi.fn()}
+            hospital={aiimsHospital}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('Patient Authentication Required')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign In to Proceed/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /submit assistance request/i })).toBeNull();
+    });
+
+    it('blocks inactive or unauthorized accounts from submitting hospital requests', () => {
+      const input = {
+        hospitalId: 'hosp-001',
+        organProgram: 'kidney' as const,
+        requestCategory: 'official_registration' as const,
+        description: 'Need assistance organizing Form 1 affidavits for authorization committee.',
+        preferredContactMethod: 'phone' as const,
+        consentGiven: true
+      };
+
+      // Inactive account
+      const inactiveUser: UserProfile = { ...mockPatient, isActive: false };
+      const inactiveRes = createHospitalAssistanceRequest(input, inactiveUser);
+      expect(inactiveRes.success).toBe(false);
+      expect(inactiveRes.error).toMatch(/restricted|inactive/i);
+
+      // Unauthorized account role (e.g. unverified hospital coordinator cannot submit patient request)
+      const unauthRes = createHospitalAssistanceRequest(input, mockUnverifiedHospitalStaff);
+      expect(unauthRes.success).toBe(false);
+      expect(unauthRes.error).toMatch(/unauthorized|patients and family caregivers/i);
+    });
   });
 
   // ============================================================================

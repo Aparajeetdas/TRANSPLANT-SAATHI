@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileCheck,
   FileText,
+  Filter,
   HelpCircle,
   Hospital,
   Info,
@@ -19,21 +20,22 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
-  User,
-  X
+  User
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent } from '../../components/ui/Card';
+import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { useAuth } from '../../context/AuthContext';
+import { getHospitalGoogleMapsUrl } from '../../lib/maps';
 import {
   addHospitalRequestPatientMessage,
   cancelHospitalAssistanceRequest,
   getHospitalRequestsForPatient,
+  getStoredHospitals,
   getStoredInAppNotifications,
   markInAppNotificationAsRead
 } from '../../lib/store';
@@ -103,6 +105,21 @@ const CATEGORY_LABELS: Record<HospitalAssistanceCategory, string> = {
   financial_counseling: 'Financial Scheme Counseling'
 };
 
+export type RequestFilterType =
+  | 'all'
+  | 'submitted'
+  | 'under_review'
+  | 'action_required'
+  | 'completed_closed';
+
+const FILTER_TABS: { id: RequestFilterType; label: string }[] = [
+  { id: 'all', label: 'All Requests' },
+  { id: 'submitted', label: 'Submitted' },
+  { id: 'under_review', label: 'Under Review' },
+  { id: 'action_required', label: 'Action Required' },
+  { id: 'completed_closed', label: 'Completed or Closed' }
+];
+
 export const HospitalAssistanceTracker: React.FC = () => {
   const { currentUser } = useAuth();
   const [requests, setRequests] = useState<HospitalAssistanceRequest[]>(() =>
@@ -112,6 +129,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
     currentUser ? getStoredInAppNotifications(currentUser.id) : []
   );
   const [showNotifications, setShowNotifications] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<RequestFilterType>('all');
 
   const [selectedRequest, setSelectedRequest] = useState<HospitalAssistanceRequest | null>(null);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -120,17 +138,20 @@ export const HospitalAssistanceTracker: React.FC = () => {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const allHospitals = useMemo(() => getStoredHospitals(), []);
+
   const refreshRequests = () => {
     if (!currentUser) return;
     const latest = getHospitalRequestsForPatient(currentUser.id);
     setRequests(latest);
     const notifs = getStoredInAppNotifications(currentUser.id);
     setNotifications(notifs);
-    if (selectedRequest) {
-      const updated = latest.find((r) => r.id === selectedRequest.id) || null;
-      setSelectedRequest(updated);
-    }
+    setSelectedRequest((prev) => (prev ? latest.find((r) => r.id === prev.id) || null : null));
   };
+
+  useEffect(() => {
+    refreshRequests();
+  }, [currentUser]);
 
   const handleMarkNotifRead = (id: string) => {
     markInAppNotificationAsRead(id);
@@ -140,6 +161,38 @@ export const HospitalAssistanceTracker: React.FC = () => {
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const filterCounts = useMemo(() => {
+    return {
+      all: requests.length,
+      submitted: requests.filter((r) => r.status === 'submitted').length,
+      under_review: requests.filter(
+        (r) => r.status === 'awaiting_hospital_review' || r.status === 'under_hospital_review'
+      ).length,
+      action_required: requests.filter((r) => r.status === 'additional_info_required').length,
+      completed_closed: requests.filter((r) =>
+        ['closed', 'cancelled', 'referred_official_registration', 'assistance_in_progress'].includes(r.status)
+      ).length
+    };
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((r) => {
+      switch (activeFilter) {
+        case 'submitted':
+          return r.status === 'submitted';
+        case 'under_review':
+          return r.status === 'awaiting_hospital_review' || r.status === 'under_hospital_review';
+        case 'action_required':
+          return r.status === 'additional_info_required';
+        case 'completed_closed':
+          return ['closed', 'cancelled', 'referred_official_registration', 'assistance_in_progress'].includes(r.status);
+        case 'all':
+        default:
+          return true;
+      }
+    });
+  }, [requests, activeFilter]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +242,19 @@ export const HospitalAssistanceTracker: React.FC = () => {
     );
   }
 
+  // Find hospital record for the active request details
+  const selectedHospitalRecord = selectedRequest
+    ? allHospitals.find(
+        (h) =>
+          h.id === selectedRequest.hospitalId ||
+          h.name.toLowerCase().trim() === selectedRequest.hospitalName.toLowerCase().trim()
+      ) || null
+    : null;
+
+  const selectedHospitalMapUrl = selectedHospitalRecord
+    ? getHospitalGoogleMapsUrl(selectedHospitalRecord)
+    : null;
+
   return (
     <div className="space-y-6 text-left">
       {/* Header & Overview */}
@@ -197,14 +263,14 @@ export const HospitalAssistanceTracker: React.FC = () => {
           <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-[#2563EB]" />
             <h3 className="font-extrabold text-[#0F172A] text-base">
-              Verified Hospital Assistance Inquiries
+              My Hospital Assistance Requests
             </h3>
             <Badge variant="primary" size="sm">
-              {requests.length} Requests
+              {requests.length} Total
             </Badge>
           </div>
           <p className="text-xs text-[#64748B]">
-            Track coordination status with verified transplant nodal centers under THOTA 1994.
+            Track assistance requests submitted to verified transplant nodal centers under THOTA 1994.
           </p>
         </div>
 
@@ -288,6 +354,39 @@ export const HospitalAssistanceTracker: React.FC = () => {
         </div>
       )}
 
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E2E8F0] pb-3">
+        <div className="flex items-center gap-1.5 text-xs text-[#64748B] font-semibold mr-1">
+          <Filter className="w-3.5 h-3.5 text-[#2563EB]" />
+          <span>Filter:</span>
+        </div>
+        {FILTER_TABS.map((tab) => {
+          const isActive = activeFilter === tab.id;
+          const count = filterCounts[tab.id];
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                isActive
+                  ? 'bg-[#2563EB] text-white shadow-xs'
+                  : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:text-[#0F172A] hover:bg-[#F4F8FF]'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#64748B]'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Statutory Clarification Banner */}
       <Alert variant="statutory" title="Administrative Assistance Scope">
         Transplant Saathi assistance requests provide hospital navigation and paperwork counseling. They do NOT register you on the official NOTTO/SOTTO organ waiting list. Official registration occurs exclusively through in-person evaluation at authorized transplant hospitals.
@@ -307,9 +406,20 @@ export const HospitalAssistanceTracker: React.FC = () => {
             </Button>
           </Link>
         </Card>
+      ) : filteredRequests.length === 0 ? (
+        <Card className="p-8 text-center space-y-2 bg-white border-[#E2E8F0]">
+          <Filter className="w-8 h-8 text-[#94A3B8] mx-auto" />
+          <h4 className="text-xs font-bold text-[#0F172A]">No Requests Matching Selected Filter</h4>
+          <p className="text-xs text-[#64748B]">
+            There are no requests matching the "{FILTER_TABS.find((t) => t.id === activeFilter)?.label}" filter.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setActiveFilter('all')}>
+            Show All Requests ({requests.length})
+          </Button>
+        </Card>
       ) : (
         <div className="space-y-4">
-          {requests.map((req) => {
+          {filteredRequests.map((req) => {
             const statusInfo = STATUS_CONFIG[req.status] || {
               label: req.status,
               variant: 'neutral',
@@ -341,7 +451,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
 
                   <div className="flex items-center gap-2">
                     <Button
-                      variant="outline"
+                      variant="primary"
                       size="sm"
                       onClick={() => {
                         setSelectedRequest(req);
@@ -349,7 +459,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
                         setActionError(null);
                       }}
                     >
-                      View Timeline & Updates
+                      View Details
                     </Button>
                     {req.status !== 'closed' && req.status !== 'cancelled' && (
                       <Button
@@ -367,7 +477,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                   <div>
                     <span className="text-[#64748B] block">Category:</span>
                     <strong className="text-[#0F172A]">
@@ -379,8 +489,14 @@ export const HospitalAssistanceTracker: React.FC = () => {
                     <strong className="text-[#0F172A] capitalize">{req.preferredContactMethod}</strong>
                   </div>
                   <div>
-                    <span className="text-[#64748B] block">Submitted Date:</span>
+                    <span className="text-[#64748B] block">Submission Date:</span>
                     <span className="text-[#0F172A]">{new Date(req.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#64748B] block">Last Updated:</span>
+                    <span className="text-[#0F172A]">
+                      {req.updatedAt ? new Date(req.updatedAt).toLocaleDateString() : new Date(req.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
 
@@ -396,7 +512,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
                     <div>
                       <strong className="block">Action Required from Hospital Coordinator:</strong>
                       <span>
-                        The transplant desk at {req.hospitalName} has requested additional information. Please check the communication thread and reply with details.
+                        The transplant desk at {req.hospitalName} has requested additional information. Please check the communication thread below and reply with details.
                       </span>
                     </div>
                   </div>
@@ -412,8 +528,8 @@ export const HospitalAssistanceTracker: React.FC = () => {
         <Modal
           isOpen={Boolean(selectedRequest)}
           onClose={() => setSelectedRequest(null)}
-          title={`Tracking: ${selectedRequest.referenceNumber}`}
-          subtitle={`${selectedRequest.hospitalName} (${selectedRequest.organProgram.toUpperCase()})`}
+          title={`Request Details: ${selectedRequest.referenceNumber}`}
+          subtitle={`${selectedRequest.hospitalName} — ${selectedRequest.organProgram.toUpperCase()} Program`}
           maxWidth="xl"
         >
           <div className="space-y-5 text-left py-1 text-xs">
@@ -430,10 +546,46 @@ export const HospitalAssistanceTracker: React.FC = () => {
               </div>
             )}
 
+            {/* Hospital & Map Link Header Card */}
+            <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-sm text-[#0F172A]">
+                  <Building2 className="w-4 h-4 text-[#2563EB] shrink-0" />
+                  <span>{selectedRequest.hospitalName}</span>
+                </div>
+                {selectedHospitalRecord && (
+                  <p className="text-[11px] text-[#64748B] flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
+                    <span>
+                      {selectedHospitalRecord.address} — {selectedHospitalRecord.city}, {selectedHospitalRecord.state}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {selectedHospitalMapUrl ? (
+                <a
+                  href={selectedHospitalMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1D4ED8] bg-white border border-[#2563EB]/30 rounded-lg hover:bg-[#F4F8FF] transition-colors shrink-0"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
+                  <span>View Hospital on Google Maps</span>
+                  <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                </a>
+              ) : (
+                <span className="text-[11px] text-[#94A3B8] inline-flex items-center gap-1 shrink-0">
+                  <MapPin className="w-3.5 h-3.5 text-[#CBD5E1]" />
+                  <span>Hospital address unmapped</span>
+                </span>
+              )}
+            </div>
+
             {/* Current Status Card */}
-            <div className="p-4 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/25 space-y-2">
+            <div className="p-4 rounded-xl bg-white border border-[#E2E8F0] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[#64748B]">Current Status:</span>
+                <span className="font-semibold text-[#64748B]">Current Request Status:</span>
                 <Badge variant={STATUS_CONFIG[selectedRequest.status].variant}>
                   {STATUS_CONFIG[selectedRequest.status].label}
                 </Badge>
@@ -443,12 +595,85 @@ export const HospitalAssistanceTracker: React.FC = () => {
               </p>
             </div>
 
-            {/* Status History Timeline */}
-            <div className="space-y-3">
+            {/* If additional info is requested, prominent notice */}
+            {selectedRequest.status === 'additional_info_required' && (
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <strong className="block">Information Required by Hospital Liaison:</strong>
+                  <p className="text-[11px] leading-relaxed">
+                    The nodal coordinator at {selectedRequest.hospitalName} has requested additional statutory details or supporting paperwork. Please review the message thread below and provide the requested clarifications.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Submitted Information (Authorized Patient View) */}
+            <div className="space-y-2">
               <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px]">
-                Administrative Status Timeline
+                Submitted Request Dossier
               </h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto p-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Request Reference:</span>
+                  <span className="font-mono font-bold text-[#1D4ED8]">{selectedRequest.referenceNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Organ Program:</span>
+                  <span className="font-semibold text-[#0F172A] capitalize">
+                    {selectedRequest.organProgram.replace('_', ' ')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Assistance Category:</span>
+                  <span className="font-semibold text-[#0F172A]">
+                    {CATEGORY_LABELS[selectedRequest.requestCategory] || selectedRequest.requestCategory}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Preferred Contact Method:</span>
+                  <span className="font-semibold text-[#0F172A] capitalize">
+                    {selectedRequest.preferredContactMethod}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Contact Phone:</span>
+                  <span className="font-mono text-[#0F172A]">{selectedRequest.contactPhone}</span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Contact Email:</span>
+                  <span className="text-[#0F172A]">{selectedRequest.contactEmail}</span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Submission Timestamp:</span>
+                  <span className="text-[#0F172A]">{new Date(selectedRequest.createdAt).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[#64748B] block text-[11px]">Last Updated:</span>
+                  <span className="text-[#0F172A]">
+                    {selectedRequest.updatedAt
+                      ? new Date(selectedRequest.updatedAt).toLocaleString()
+                      : new Date(selectedRequest.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white border border-[#E2E8F0]">
+                <span className="text-[11px] font-semibold text-[#64748B] block mb-1">
+                  Patient Inquiry Statement:
+                </span>
+                <p className="text-[#0F172A] text-[11px] leading-relaxed whitespace-pre-wrap">
+                  {selectedRequest.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Status History Timeline */}
+            <div className="space-y-2">
+              <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px]">
+                Administrative Status History
+              </h4>
+              <div className="space-y-2 max-h-44 overflow-y-auto p-1">
                 {selectedRequest.statusHistory.map((h, i) => (
                   <div key={h.id || i} className="p-2.5 rounded-lg bg-white border border-[#E2E8F0] space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
@@ -461,15 +686,15 @@ export const HospitalAssistanceTracker: React.FC = () => {
               </div>
             </div>
 
-            {/* Communication Thread */}
-            <div className="space-y-3">
+            {/* Communication Thread (Patient Visible Updates & Messages) */}
+            <div className="space-y-2">
               <h4 className="font-bold text-[#0F172A] uppercase tracking-wider text-[11px]">
-                Messages from Hospital Coordinator
+                Hospital Coordinator Communication Thread
               </h4>
               <div className="space-y-2 max-h-48 overflow-y-auto p-1">
                 {selectedRequest.patientNotes.length === 0 ? (
-                  <p className="text-[#64748B] text-center py-4">
-                    No hospital messages yet. Updates will appear here.
+                  <p className="text-[#64748B] text-center py-4 bg-slate-50 rounded-xl border border-dashed border-[#CBD5E1]">
+                    No messages from the hospital coordinator yet. Status updates and notes will appear here.
                   </p>
                 ) : (
                   selectedRequest.patientNotes.map((msg) => (
@@ -485,7 +710,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
                         <span>{msg.senderName} ({msg.senderRole.replace('_', ' ')})</span>
                         <span className="text-[#64748B] font-normal">{new Date(msg.timestamp).toLocaleString()}</span>
                       </div>
-                      <p className="text-[#0F172A]">{msg.message}</p>
+                      <p className="text-[#0F172A] text-[11px]">{msg.message}</p>
                     </div>
                   ))
                 )}
@@ -508,7 +733,7 @@ export const HospitalAssistanceTracker: React.FC = () => {
                     disabled={!replyMessage.trim()}
                     leftIcon={<Send className="w-3.5 h-3.5" />}
                   >
-                    Reply
+                    Send Reply
                   </Button>
                 </form>
               )}

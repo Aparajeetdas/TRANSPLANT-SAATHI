@@ -8,7 +8,8 @@ import {
   IndianRupee,
   ShieldCheck
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
 import { useAuth } from '../../context/AuthContext';
@@ -21,28 +22,37 @@ import { PrivacySettings } from '../../features/patient/PrivacySettings';
 import { SavedHospitalsAndResources } from '../../features/patient/SavedHospitalsAndResources';
 import { SupportRequestTracker } from '../../features/patient/SupportRequestTracker';
 
+export type PatientDashboardTab =
+  | 'my_requests'
+  | 'hospital_assistance'
+  | 'journey'
+  | 'checklist'
+  | 'notes'
+  | 'support'
+  | 'expenses'
+  | 'saved'
+  | 'privacy';
+
 interface PatientDashboardPageProps {
-  initialTab?:
-    | 'hospital_assistance'
-    | 'journey'
-    | 'checklist'
-    | 'notes'
-    | 'support'
-    | 'expenses'
-    | 'saved'
-    | 'privacy';
+  initialTab?: PatientDashboardTab;
 }
 
 export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
   initialTab = 'journey'
 }) => {
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<
-    'hospital_assistance' | 'journey' | 'checklist' | 'notes' | 'support' | 'expenses' | 'saved' | 'privacy'
-  >(initialTab);
+  const location = useLocation();
+  const locationTab = (location.state as { tab?: PatientDashboardTab } | undefined)?.tab;
+  const [activeTab, setActiveTab] = useState<PatientDashboardTab>(locationTab || initialTab);
+
+  useEffect(() => {
+    if (locationTab) {
+      setActiveTab(locationTab);
+    }
+  }, [locationTab]);
 
   return (
-    <div className="py-6 sm:py-10 space-y-6 sm:space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-left">
+    <div className="py-6 sm:py-10 space-y-6 sm:space-y-8 text-left">
       {/* Patient Welcome Hero */}
       <div className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-xs">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -51,7 +61,6 @@ export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
               <Badge variant="primary">
                 {currentUser?.role === 'family' ? 'Family Caregiver Workspace' : 'Patient Workspace'}
               </Badge>
-              <Badge variant="neutral">Organ: KIDNEY / RENAL</Badge>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F4F8FF] border border-[#2563EB]/25 text-[11px] font-mono font-bold text-[#1D4ED8]">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
                 Public ID: {currentUser?.publicId || 'TS-7K9P-X4QM'}
@@ -105,7 +114,7 @@ export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
       <div className="border-b border-[#E2E8F0]">
         <nav className="flex space-x-2 sm:space-x-4 overflow-x-auto pb-px" aria-label="Tabs">
           {[
-            { id: 'hospital_assistance', label: 'Hospital Assistance', icon: Hospital },
+            { id: 'my_requests', label: 'My Requests', icon: Hospital },
             { id: 'journey', label: 'Journey Tracker', icon: Compass },
             { id: 'checklist', label: 'Administrative Checklist', icon: CheckSquare },
             { id: 'notes', label: 'Doctor Notes', icon: FileText },
@@ -115,7 +124,9 @@ export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
             { id: 'privacy', label: 'Privacy & Consents', icon: ShieldCheck }
           ].map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive =
+              activeTab === tab.id ||
+              (tab.id === 'my_requests' && activeTab === 'hospital_assistance');
             return (
               <button
                 key={tab.id}
@@ -136,7 +147,9 @@ export const PatientDashboardPage: React.FC<PatientDashboardPageProps> = ({
 
       {/* Tab Panels */}
       <div>
-        {activeTab === 'hospital_assistance' && <HospitalAssistanceTracker />}
+        {(activeTab === 'my_requests' || activeTab === 'hospital_assistance') && (
+          <HospitalAssistanceTracker />
+        )}
         {activeTab === 'journey' && <JourneyTracker />}
         {activeTab === 'checklist' && <AdministrativeChecklist />}
         {activeTab === 'notes' && <AppointmentNotesLogger />}

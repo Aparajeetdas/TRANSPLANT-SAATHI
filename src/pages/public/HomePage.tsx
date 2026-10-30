@@ -71,6 +71,8 @@ export const HomePage: React.FC = () => {
                   <Hospital className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
+                    id="hospital-search-query"
+                    aria-label="Search hospitals by name, city, or coordinator"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Enter hospital name, city, or coordinator..."
@@ -80,6 +82,8 @@ export const HomePage: React.FC = () => {
 
                 <div className="md:col-span-3">
                   <select
+                    id="hospital-search-organ"
+                    aria-label="Filter by organ transplant program"
                     value={selectedOrgan}
                     onChange={(e) => setSelectedOrgan(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-[#E2E8F0] text-xs text-[#0F172A] bg-white focus:border-[#2563EB] focus-visible:outline-none cursor-pointer"

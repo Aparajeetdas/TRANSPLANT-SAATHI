@@ -59,16 +59,16 @@ export const Dialog: React.FC<DialogProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-xs transition-opacity z-0"
         onClick={onClose}
         aria-hidden="true"
         data-testid="dialog-backdrop"
       />
 
-      <div className="flex min-h-full items-center justify-center p-4 text-center">
+      <div className="flex min-h-full items-center justify-center p-4 text-center relative z-10 pointer-events-none">
         <div
           ref={dialogRef}
-          className={`w-full ${maxWidthClasses[effectiveWidth]} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-2xl transition-all border border-[#E2E8F0] my-8 relative z-10`}
+          className={`w-full ${maxWidthClasses[effectiveWidth]} transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-2xl transition-all border border-[#E2E8F0] my-8 relative z-10 pointer-events-auto`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

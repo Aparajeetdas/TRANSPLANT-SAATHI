@@ -44,6 +44,7 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
   const { currentUser } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -64,6 +65,7 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
 
   const onSubmit = async (data: RequestFormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       // Simulate network persistence
@@ -105,6 +107,8 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
       if (onSuccess) {
         onSuccess();
       }
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to submit assistance request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -112,6 +116,7 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
 
   const handleClose = () => {
     setIsSuccess(false);
+    setSubmitError(null);
     reset();
     onClose();
   };
@@ -152,6 +157,13 @@ export const RequestSupportModal: React.FC<RequestSupportModalProps> = ({
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {submitError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Statutory Boundary Notice */}
           <div className="p-3 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/20 text-[11px] text-[#1D4ED8] flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />

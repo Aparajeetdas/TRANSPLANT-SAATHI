@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   UserCheck
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
@@ -32,6 +32,22 @@ import {
   OrganType,
   VerifiedHospital
 } from '../../types';
+
+// Helper: Validates Indian mobile numbers (10 digits starting with 6, 7, 8, or 9)
+// Accepts optional +91, 91, or 0 prefixes and ignores spaces, hyphens, dots, parentheses
+export const isValidIndianMobile = (phone: string): boolean => {
+  const trimmed = phone.trim();
+  if (!trimmed) return false;
+  const digitsOnly = trimmed.replace(/[\s\-\(\)\.]/g, '');
+  return /^(?:\+?91|0)?[6-9]\d{9}$/.test(digitsOnly);
+};
+
+// Helper: Validates RFC-compliant email address format
+export const isValidEmail = (email: string): boolean => {
+  const trimmed = email.trim();
+  if (!trimmed) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+};
 
 interface HospitalAssistanceRequestModalProps {
   isOpen: boolean;
@@ -64,10 +80,52 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
   const [contactEmail, setContactEmail] = useState(currentUser?.email || '');
   const [consentGiven, setConsentGiven] = useState(false);
 
+  // Synchronize state when modal opens or initialOrgan/currentUser changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialOrgan && hospital.organsSupported.includes(initialOrgan)) {
+        setSelectedOrgan(initialOrgan);
+      } else if (!hospital.organsSupported.includes(selectedOrgan)) {
+        setSelectedOrgan(hospital.organsSupported[0] || 'kidney');
+      }
+      if (currentUser?.phone && !contactPhone) {
+        setContactPhone(currentUser.phone);
+      }
+      if (currentUser?.email && !contactEmail) {
+        setContactEmail(currentUser.email);
+      }
+    }
+  }, [isOpen, initialOrgan, hospital, currentUser]);
+
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdRequest, setCreatedRequest] = useState<HospitalAssistanceRequest | null>(null);
+
+  // Trimmed validation state checks
+  const trimmedDescription = description.trim();
+  const trimmedPhone = contactPhone.trim();
+  const trimmedEmail = contactEmail.trim();
+
+  const effectivePhone = trimmedPhone || (currentUser?.phone || '').trim();
+  const effectiveEmail = trimmedEmail || (currentUser?.email || '').trim();
+
+  const isDescriptionValid = trimmedDescription.length >= 10;
+  const isPhoneValid =
+    contactMethod === 'phone'
+      ? isValidIndianMobile(effectivePhone)
+      : effectivePhone.length === 0 || isValidIndianMobile(effectivePhone);
+  const isEmailValid =
+    contactMethod === 'email'
+      ? isValidEmail(effectiveEmail)
+      : effectiveEmail.length === 0 || isValidEmail(effectiveEmail);
+  const isContactValid = isPhoneValid && isEmailValid;
+  const isAuthorized = Boolean(
+    currentUser &&
+      currentUser.isActive !== false &&
+      (currentUser.role === 'patient' || currentUser.role === 'family' || currentUser.role === 'admin')
+  );
+  const isFormValid = isDescriptionValid && consentGiven && isContactValid && isAuthorized;
 
   const resetForm = () => {
     setDescription('');
@@ -82,22 +140,45 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isSubmitting) return;
 
     if (!currentUser) {
-      setSubmitError('Please sign in with a patient account to submit an assistance request.');
+      setSubmitError('Authentication required. Please sign in with a patient account to submit an assistance request.');
+      return;
+    }
+
+    if (currentUser.isActive === false) {
+      setSubmitError('Account access restricted. Unverified or inactive accounts cannot submit hospital assistance requests.');
+      return;
+    }
+
+    if (currentUser.role !== 'patient' && currentUser.role !== 'family' && currentUser.role !== 'admin') {
+      setSubmitError('Unauthorized: Hospital assistance requests can only be initiated by registered Patients or Family Caregivers.');
+      return;
+    }
+
+    if (!isDescriptionValid) {
+      setSubmitError('Please provide at least 10 characters describing the assistance you need.');
+      return;
+    }
+
+    if (contactMethod === 'phone' && !isValidIndianMobile(effectivePhone)) {
+      setSubmitError('Please provide a valid 10-digit Indian contact phone number (+91 or 91 optional) for the hospital coordinator.');
+      return;
+    }
+
+    if (contactMethod === 'email' && !isValidEmail(effectiveEmail)) {
+      setSubmitError('Please provide a valid contact email address for coordination updates.');
       return;
     }
 
     if (!consentGiven) {
       setSubmitError('You must provide informed consent to transmit this request to the hospital nodal desk.');
-      return;
-    }
-
-    if (description.trim().length < 10) {
-      setSubmitError('Please provide at least 10 characters describing the assistance you need.');
       return;
     }
 
@@ -109,10 +190,10 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
         hospitalId: hospital.id,
         organProgram: selectedOrgan,
         requestCategory: category,
-        description: description.trim(),
+        description: trimmedDescription,
         preferredContactMethod: contactMethod,
-        contactPhone: contactPhone || currentUser.phone,
-        contactEmail: contactEmail || currentUser.email,
+        contactPhone: effectivePhone || currentUser.phone,
+        contactEmail: effectiveEmail || currentUser.email,
         consentGiven: true
       };
 
@@ -275,10 +356,10 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
                 size="sm"
                 onClick={() => {
                   handleClose();
-                  navigate('/patient');
+                  navigate('/patient', { state: { tab: 'my_requests' } });
                 }}
               >
-                Go to Patient Dashboard
+                View My Requests
               </Button>
             </div>
           </div>
@@ -354,13 +435,22 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
 
             {/* Assistance Description */}
             <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-1">
                 <label htmlFor="request-description" className="font-semibold text-[#0F172A]">
                   Short Description of Assistance Needed <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-[#64748B] font-mono">
-                  {description.length} / 1000 characters
-                </span>
+                <div className="flex items-center gap-1.5 text-[11px] font-mono">
+                  <span
+                    className={
+                      trimmedDescription.length < 10
+                        ? 'text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200'
+                        : 'text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200'
+                    }
+                  >
+                    {trimmedDescription.length}/10 min characters
+                  </span>
+                  <span className="text-[#64748B]">({description.length}/1000 max)</span>
+                </div>
               </div>
               <textarea
                 id="request-description"
@@ -369,11 +459,32 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={1000}
                 placeholder="Briefly describe what assistance you need (e.g., guidance on Form 1 near-relative joint affidavit, connecting with the transplant nodal coordinator, or AB-PMJAY scheme documentation)..."
-                className="w-full p-3 rounded-lg border border-[#CBD5E1] bg-white text-xs text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/30 focus:border-[#2563EB]"
+                className={`w-full p-3 rounded-lg border bg-white text-xs text-[#0F172A] focus:outline-none focus:ring-2 transition-colors ${
+                  trimmedDescription.length > 0 && trimmedDescription.length < 10
+                    ? 'border-amber-400 focus:ring-amber-400/30 focus:border-amber-500'
+                    : isDescriptionValid
+                    ? 'border-[#CBD5E1] focus:ring-[#2563EB]/30 focus:border-[#2563EB]'
+                    : 'border-[#CBD5E1] focus:ring-[#2563EB]/30 focus:border-[#2563EB]'
+                }`}
               />
-              <p className="text-[11px] text-[#64748B]">
-                Do not upload diagnostic reports or sensitive genetic data here. Clinical evaluations are conducted directly at the hospital.
-              </p>
+              {/* Inline explanation & live feedback */}
+              {trimmedDescription.length === 0 ? (
+                <p className="text-[11px] text-[#64748B]">
+                  Minimum 10 characters required. Do not upload diagnostic reports or sensitive genetic data here.
+                </p>
+              ) : trimmedDescription.length < 10 ? (
+                <p className="text-[11px] text-rose-600 font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Please provide at least 10 characters ({trimmedDescription.length} entered so far).
+                  </span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Description meets minimum length requirement ({trimmedDescription.length} characters).</span>
+                </p>
+              )}
             </div>
 
             {/* Contact Details & Preferred Method */}
@@ -383,11 +494,14 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="text-[11px] text-[#64748B] block mb-1">Contact Method</label>
+                  <label htmlFor="contact-method-select" className="text-[11px] text-[#64748B] block mb-1">
+                    Contact Method
+                  </label>
                   <select
+                    id="contact-method-select"
                     value={contactMethod}
                     onChange={(e) => setContactMethod(e.target.value as 'phone' | 'email' | 'in_app')}
-                    className="w-full h-9 px-2 rounded-lg border border-[#CBD5E1] bg-white text-xs font-medium"
+                    className="w-full h-9 px-2 rounded-lg border border-[#CBD5E1] bg-white text-xs font-medium focus:border-[#2563EB] focus:outline-none"
                   >
                     <option value="phone">Phone Call</option>
                     <option value="email">Email</option>
@@ -395,24 +509,66 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
                   </select>
                 </div>
                 <div>
-                  <label className="text-[11px] text-[#64748B] block mb-1">Phone Number</label>
+                  <label htmlFor="request-phone-input" className="text-[11px] text-[#64748B] block mb-1">
+                    Phone Number {contactMethod === 'phone' && <span className="text-rose-500">*</span>}
+                  </label>
                   <input
+                    id="request-phone-input"
+                    aria-label="Phone Number"
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
                     placeholder="+91-98765-43210"
-                    className="w-full h-9 px-2 rounded-lg border border-[#CBD5E1] bg-white text-xs"
+                    className={`w-full h-9 px-2 rounded-lg border bg-white text-xs focus:outline-none ${
+                      contactMethod === 'phone' && effectivePhone.length > 0 && !isValidIndianMobile(effectivePhone)
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/30'
+                        : 'border-[#CBD5E1] focus:border-[#2563EB]'
+                    }`}
                   />
+                  {contactMethod === 'phone' && effectivePhone.length === 0 ? (
+                    <p className="text-[10px] text-rose-600 font-medium mt-1 leading-tight">
+                      Valid 10-digit Indian mobile number is required when Phone Call is selected.
+                    </p>
+                  ) : effectivePhone.length > 0 && !isValidIndianMobile(effectivePhone) ? (
+                    <p className="text-[10px] text-rose-600 font-medium mt-1 leading-tight">
+                      Please enter a valid 10-digit Indian mobile number (e.g. +91-98765-43210 or 9876543210).
+                    </p>
+                  ) : effectivePhone.length > 0 && isValidIndianMobile(effectivePhone) ? (
+                    <p className="text-[10px] text-emerald-600 font-medium mt-1 leading-tight">
+                      ✓ Valid 10-digit mobile number.
+                    </p>
+                  ) : null}
                 </div>
                 <div>
-                  <label className="text-[11px] text-[#64748B] block mb-1">Email Address</label>
+                  <label htmlFor="request-email-input" className="text-[11px] text-[#64748B] block mb-1">
+                    Email Address {contactMethod === 'email' && <span className="text-rose-500">*</span>}
+                  </label>
                   <input
+                    id="request-email-input"
+                    aria-label="Email Address"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     placeholder="patient@example.com"
-                    className="w-full h-9 px-2 rounded-lg border border-[#CBD5E1] bg-white text-xs"
+                    className={`w-full h-9 px-2 rounded-lg border bg-white text-xs focus:outline-none ${
+                      contactMethod === 'email' && effectiveEmail.length > 0 && !isValidEmail(effectiveEmail)
+                        ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/30'
+                        : 'border-[#CBD5E1] focus:border-[#2563EB]'
+                    }`}
                   />
+                  {contactMethod === 'email' && effectiveEmail.length === 0 ? (
+                    <p className="text-[10px] text-rose-600 font-medium mt-1 leading-tight">
+                      Valid email address is required when Email is selected.
+                    </p>
+                  ) : effectiveEmail.length > 0 && !isValidEmail(effectiveEmail) ? (
+                    <p className="text-[10px] text-rose-600 font-medium mt-1 leading-tight">
+                      Please enter a valid email address (e.g. name@example.com).
+                    </p>
+                  ) : effectiveEmail.length > 0 && isValidEmail(effectiveEmail) ? (
+                    <p className="text-[10px] text-emerald-600 font-medium mt-1 leading-tight">
+                      ✓ Valid email address format.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -432,22 +588,55 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
             </div>
 
             {/* Informed Consent Checkbox */}
-            <div className="p-3 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/25 flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="hospital-assistance-consent"
-                checked={consentGiven}
-                onChange={(e) => setConsentGiven(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-[#2563EB] rounded border-slate-300 focus:ring-[#2563EB] cursor-pointer"
-              />
-              <label
-                htmlFor="hospital-assistance-consent"
-                className="text-xs text-[#0F172A] leading-relaxed cursor-pointer font-medium"
-              >
-                I consent to transmitting this assistance inquiry to the verified transplant coordination desk of{' '}
-                <strong>{hospital.name}</strong>. I understand this request is an administrative guidance query and NOT an official waiting-list registration, clinical approval, or organ offer.
-              </label>
+            <div className="space-y-1">
+              <div className="p-3 rounded-xl bg-[#F4F8FF] border border-[#2563EB]/25 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="hospital-assistance-consent"
+                  checked={consentGiven}
+                  onChange={(e) => setConsentGiven(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-[#2563EB] rounded border-slate-300 focus:ring-[#2563EB] cursor-pointer"
+                />
+                <label
+                  htmlFor="hospital-assistance-consent"
+                  className="text-xs text-[#0F172A] leading-relaxed cursor-pointer font-medium"
+                >
+                  I consent to transmitting this assistance inquiry to the verified transplant coordination desk of{' '}
+                  <strong>{hospital.name}</strong>. I understand this request is an administrative guidance query and NOT an official waiting-list registration, clinical approval, or organ offer.
+                </label>
+              </div>
+              {!consentGiven && (
+                <p className="text-[11px] text-amber-700 font-medium px-1">
+                  Informed consent is required before transmitting this assistance request.
+                </p>
+              )}
             </div>
+
+            {/* Action required explanation banner when form is not yet valid */}
+            {!isFormValid && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                <span className="font-bold flex items-center gap-1.5 text-amber-950">
+                  <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Required items before submission:</span>
+                </span>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-amber-800">
+                  {!isDescriptionValid && (
+                    <li>
+                      Short description must be at least 10 characters (currently {trimmedDescription.length}/10)
+                    </li>
+                  )}
+                  {contactMethod === 'phone' && !isPhoneValid && (
+                    <li>Valid phone number is required when Phone Call is selected</li>
+                  )}
+                  {contactMethod === 'email' && !isEmailValid && (
+                    <li>Valid email address is required when Email is selected</li>
+                  )}
+                  {!consentGiven && (
+                    <li>Informed consent checkbox must be selected</li>
+                  )}
+                </ul>
+              </div>
+            )}
 
             {/* Form Actions */}
             <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
@@ -464,7 +653,8 @@ export const HospitalAssistanceRequestModal: React.FC<HospitalAssistanceRequestM
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={isSubmitting || !consentGiven || description.trim().length < 10}
+                isLoading={isSubmitting}
+                disabled={isSubmitting || !isFormValid}
               >
                 {isSubmitting ? 'Submitting Request...' : 'Submit Assistance Request'}
               </Button>

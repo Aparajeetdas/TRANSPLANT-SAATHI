@@ -154,20 +154,24 @@ describe('Hospital Directory & Statutory Source Suite', () => {
     });
   });
 
-  it('renders mobile view tabs and allows switching views', async () => {
+  it('renders hospital directory directly without google maps api notice or view mode toggle', async () => {
     renderDirectory();
 
-    const listTab = screen.getByRole('button', { name: /show list view/i });
-    const mapTab = screen.getByRole('button', { name: /show interactive map view/i });
+    // Verify Google Maps warning notice is absent
+    expect(screen.queryByText(/Google Maps API Key Required/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Google Maps Integration Configured/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show list only/i })).not.toBeInTheDocument();
 
-    expect(listTab).toBeInTheDocument();
-    expect(mapTab).toBeInTheDocument();
+    // Verify Split View and Map Only controls are absent
+    expect(screen.queryByText(/Split View/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Map Only/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /split/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /map only/i })).not.toBeInTheDocument();
 
-    fireEvent.click(mapTab);
-    expect(mapTab.className).toContain('bg-[#2563EB]');
-
-    fireEvent.click(listTab);
-    expect(listTab.className).toContain('bg-[#2563EB]');
+    // Verify hospital listings are directly visible
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /All India Institute of Medical Sciences/i })).toBeInTheDocument();
+    });
   });
 
   it('renders HospitalDetailPage with granular statutory source citations table', async () => {

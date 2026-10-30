@@ -15,7 +15,6 @@ import {
   Heart,
   Hospital,
   Layers,
-  List,
   Mail,
   MapPin,
   Phone,
@@ -34,7 +33,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { HospitalMap } from '../../components/map/HospitalMap';
+import { getHospitalGoogleMapsUrl } from '../../lib/maps';
 import { useHospitals } from '../../hooks/useHospitals';
 import { getStoredHospitals } from '../../lib/store';
 import type { OrganType, VerifiedHospital } from '../../types';
@@ -144,7 +143,6 @@ export const DirectoryPage: React.FC = () => {
   const [sortKey, setSortKey] = useState<'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'beds-desc' | 'beds-asc'>('name-asc');
   
   // Selection & UI state
-  const [selectedHospital, setSelectedHospital] = useState<VerifiedHospital | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
   const [isMobileFilterDrawerOpen, setIsMobileFilterDrawerOpen] = useState(false);
   const [isOrganDropdownOpen, setIsOrganDropdownOpen] = useState(false);
@@ -178,9 +176,6 @@ export const DirectoryPage: React.FC = () => {
     };
   }, [isOrganDropdownOpen]);
 
-  // View mode: on desktop 'both' | 'list'; on mobile, tabs toggle between 'list' and 'map'
-  const [desktopViewMode, setDesktopViewMode] = useState<'both' | 'list'>('both');
-  const [mobileTab, setMobileTab] = useState<'list' | 'map'>('list');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 4;
 
@@ -312,10 +307,6 @@ export const DirectoryPage: React.FC = () => {
     setIsOrganDropdownOpen(false);
   };
 
-  const handleClearOrgans = () => {
-    handleOrganSelect('all');
-  };
-
   const handleStateSelect = (state: string) => {
     setSelectedState(state);
     setSelectedCity('all');
@@ -385,52 +376,6 @@ export const DirectoryPage: React.FC = () => {
             Licensed Indian organ transplantation hospitals verified against NOTTO, ROTTO, and state SOTTO gazette registries.
           </p>
         </div>
-
-        {/* Desktop View Mode Toggle */}
-        <div className="hidden lg:inline-flex p-1 rounded-xl bg-[#F4F8FF] border border-[#E2E8F0]">
-          <button
-            onClick={() => setDesktopViewMode('both')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'both' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Split View (Map + List)</span>
-          </button>
-          <button
-            onClick={() => setDesktopViewMode('list')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-              desktopViewMode === 'list' ? 'bg-[#2563EB] text-white shadow-xs' : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>List Only</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile View Mode Tabs (< lg) */}
-      <div className="lg:hidden flex rounded-xl bg-[#F4F8FF] border border-[#E2E8F0] p-1">
-        <button
-          onClick={() => setMobileTab('list')}
-          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'list' ? 'bg-[#2563EB] text-white' : 'text-[#64748B]'
-          }`}
-          aria-label="Show list view"
-        >
-          <List className="w-3.5 h-3.5" />
-          <span>List View ({totalItems})</span>
-        </button>
-        <button
-          onClick={() => setMobileTab('map')}
-          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-            mobileTab === 'map' ? 'bg-[#2563EB] text-white' : 'text-[#64748B]'
-          }`}
-          aria-label="Show interactive map view"
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          <span>Map View ({totalItems})</span>
-        </button>
       </div>
 
       {/* Search, Location, and Filter Controls */}
@@ -962,40 +907,19 @@ export const DirectoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Results View (List + Map) */}
+      {/* Main Results View (Hospital Card Grid) */}
       {!isLoading && !isError && totalItems > 0 && (
         <div className="space-y-6">
-          {/* Synchronized Google Maps View */}
-          {((desktopViewMode !== 'list' && (typeof window === 'undefined' || window.innerWidth >= 1024)) || mobileTab === 'map') && (
-            <div className={desktopViewMode === 'both' ? 'hidden lg:block' : 'block'}>
-              <HospitalMap
-                hospitals={filteredAndSortedHospitals}
-                selectedHospital={selectedHospital}
-                onSelectHospital={(h) => setSelectedHospital(h)}
-                onViewList={() => {
-                  setDesktopViewMode('list');
-                  setMobileTab('list');
-                }}
-              />
-            </div>
-          )}
-
           {/* Hospital Cards Grid */}
-          {((typeof window === 'undefined' || window.innerWidth >= 1024) || mobileTab === 'list') && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {paginatedHospitals.map((hospital) => {
                 const isVerified = hospital.reviewStatus === 'verified';
                 const isPending = hospital.reviewStatus === 'pending';
-                const isSelected = selectedHospital?.id === hospital.id;
 
                 return (
                   <Card
                     key={hospital.id}
-                    className={`p-5 flex flex-col justify-between transition-all ${
-                      isSelected
-                        ? 'border-[#2563EB] ring-1 ring-[#2563EB] bg-[#F4F8FF]/30'
-                        : 'hover:border-[#CBD5E1]'
-                    }`}
+                    className="p-5 flex flex-col justify-between transition-all hover:border-[#CBD5E1]"
                   >
                     <div className="space-y-3">
                       {/* Top Badges: Registration code & Verification with date */}
@@ -1149,21 +1073,29 @@ export const DirectoryPage: React.FC = () => {
                           <span>Official Source</span>
                           <ExternalLink className="w-3 h-3 text-[#64748B]" />
                         </a>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedHospital(hospital);
-                            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                              setMobileTab('map');
-                            } else if (desktopViewMode === 'list') {
-                              setDesktopViewMode('both');
-                            }
-                          }}
-                          className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <MapPin className="w-3 h-3" />
-                          <span>Locate on Map</span>
-                        </button>
+                        {(() => {
+                          const mapUrl = getHospitalGoogleMapsUrl(hospital);
+                          if (mapUrl) {
+                            return (
+                              <a
+                                href={mapUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <MapPin className="w-3 h-3" />
+                                <span>View on Google Maps</span>
+                                <ExternalLink className="w-2.5 h-2.5 text-[#64748B]" />
+                              </a>
+                            );
+                          }
+                          return (
+                            <span className="text-xs text-[#94A3B8] inline-flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-[#CBD5E1]" />
+                              <span>Location Unmapped</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                       <Link to={`/hospitals/${hospital.id}`}>
                         <Button variant="primary" size="sm" className="text-xs py-1.5">
@@ -1175,7 +1107,6 @@ export const DirectoryPage: React.FC = () => {
                 );
               })}
             </div>
-          )}
 
           {/* Accessible Pagination Navigation */}
           {totalPages > 1 && (

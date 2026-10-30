@@ -122,8 +122,12 @@ export const LoginPage: React.FC = () => {
       )}
 
       {/* Mode Switcher */}
-      <div className="flex rounded-xl bg-[#F4F8FF] p-1 border border-[#E2E8F0]">
+      <div className="flex rounded-xl bg-[#F4F8FF] p-1 border border-[#E2E8F0]" role="tablist" aria-label="Authentication Method">
         <button
+          role="tab"
+          aria-selected={activeTab === 'credentials'}
+          aria-controls="tab-panel-credentials"
+          id="tab-credentials"
           onClick={() => setActiveTab('credentials')}
           className={`w-1/2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'credentials'
@@ -131,9 +135,13 @@ export const LoginPage: React.FC = () => {
               : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          Email & Password
+          Email &amp; Password
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'personas'}
+          aria-controls="tab-panel-personas"
+          id="tab-personas"
           onClick={() => setActiveTab('personas')}
           className={`w-1/2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'personas'
@@ -147,6 +155,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Tab 1: Standard Credentials Form */}
       {activeTab === 'credentials' ? (
+        <div role="tabpanel" id="tab-panel-credentials" aria-label="Credentials Login Panel">
         <Card>
           <CardContent className="space-y-4 pt-0">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -194,8 +203,10 @@ export const LoginPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       ) : (
         /* Tab 2: Test Personas for rapid verification */
+        <div role="tabpanel" id="tab-panel-personas" aria-labelledby="tab-personas">
         <Card className="space-y-4">
           <div className="text-xs text-[#64748B]">
             Select an authenticated role to inspect features across different healthcare actors:
@@ -244,6 +255,7 @@ export const LoginPage: React.FC = () => {
             })}
           </div>
         </Card>
+        </div>
       )}
     </div>
   );
